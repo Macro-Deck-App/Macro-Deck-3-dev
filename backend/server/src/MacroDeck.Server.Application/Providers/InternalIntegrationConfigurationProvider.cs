@@ -1,24 +1,29 @@
 using MacroDeck.SDK.PluginSDK.Configuration;
 using MacroDeck.Server.Application.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MacroDeck.Server.Application.Providers;
 
 public class InternalIntegrationConfigurationProvider : IIntegrationConfigurationProvider
 {
-	private readonly IIntegrationConfigurationService _integrationConfigurationService;
+	private readonly IServiceProvider _serviceProvider;
 
-	public InternalIntegrationConfigurationProvider(IIntegrationConfigurationService integrationConfigurationService)
+	public InternalIntegrationConfigurationProvider(IServiceProvider serviceProvider)
 	{
-		_integrationConfigurationService = integrationConfigurationService;
+		_serviceProvider = serviceProvider;
 	}
 
-	public Task<byte[]?> GetIntegrationConfiguration(string integrationId, string key)
+	public async Task<byte[]?> GetIntegrationConfiguration(string integrationId, string key)
 	{
-		return _integrationConfigurationService.GetDecryptedConfiguration(integrationId, key);
+		using var scope = _serviceProvider.CreateScope();
+		var service = scope.ServiceProvider.GetRequiredService<IIntegrationConfigurationService>();
+		return await service.GetDecryptedConfiguration(integrationId, key);
 	}
 
-	public Task SetIntegrationConfiguration(string integrationId, string key, byte[] value)
+	public async Task SetIntegrationConfiguration(string integrationId, string key, byte[] value)
 	{
-		return _integrationConfigurationService.SetDecryptedConfiguration(integrationId, key, value);
+		using var scope = _serviceProvider.CreateScope();
+		var service = scope.ServiceProvider.GetRequiredService<IIntegrationConfigurationService>();
+		await service.SetDecryptedConfiguration(integrationId, key, value);
 	}
 }

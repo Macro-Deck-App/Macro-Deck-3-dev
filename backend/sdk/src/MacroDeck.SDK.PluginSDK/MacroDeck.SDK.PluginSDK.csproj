@@ -29,8 +29,5 @@
         <FrameworkReference Include="Microsoft.AspNetCore.App"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\..\src\MacroDeck.Protobuf\MacroDeck.Protobuf.csproj"/>
-    </ItemGroup>
 
 </Project>

@@ -73,11 +73,8 @@ public class Startup
 		// Register plugin services
 		services.AddSingleton<IPluginRegistry, PluginRegistry>();
 		services.AddSingleton<IPluginActionInvoker, PluginActionInvoker>();
-		services.AddSingleton<IPluginEncryptionService, PluginEncryptionService>();
 		services.AddSingleton<IPluginCommunicationService, PluginCommunicationService>();
 
-		// Register configuration providers
-		//services.AddScoped<IIntegrationConfigurationProvider, InternalIntegrationConfigurationProvider>();
 
 		services.AddDataProtection()
 			.PersistKeysToFileSystem(new DirectoryInfo("keys"))

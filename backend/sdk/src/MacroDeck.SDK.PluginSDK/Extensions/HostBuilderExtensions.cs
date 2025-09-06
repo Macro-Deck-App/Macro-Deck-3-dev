@@ -10,7 +10,7 @@ public static class HostBuilderExtensions
 {
 	public static IHostBuilder ConfigureSerilog(this IHostBuilder hostBuilder)
 	{
-		return hostBuilder.UseSerilog((_, _, configuration) =>
+		return hostBuilder.UseSerilog((_, serviceProvider, configuration) =>
 			configuration
 				.MinimumLevel.Verbose()
 				.MinimumLevel.Override("Microsoft",
@@ -22,6 +22,7 @@ public static class HostBuilderExtensions
 #if !DEBUG
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
 #endif
+				.WriteTo.MacroDeck(serviceProvider)
 				.WriteTo.Console(theme: AnsiConsoleTheme.Code));
 	}
 }

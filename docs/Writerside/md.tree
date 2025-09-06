@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE instance-profile
+        SYSTEM "https://resources.jetbrains.com/writerside/1.0/product-profile.dtd">
+
+<instance-profile id="md"
+                 name="Macro Deck"
+                 start-page="welcome.md">
+
+    <toc-element topic="welcome.md"/>
+    <toc-element toc-title="Developers">
+        <toc-element toc-title="Plugin SDK">
+            <toc-element topic="plugin-sdk.md"/>
+        </toc-element>
+    </toc-element>
+</instance-profile>

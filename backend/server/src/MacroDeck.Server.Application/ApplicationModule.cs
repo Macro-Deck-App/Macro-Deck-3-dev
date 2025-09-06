@@ -1,5 +1,7 @@
+using MacroDeck.SDK.PluginSDK.Configuration;
 using MacroDeck.Server.Application.HostedServices;
 using MacroDeck.Server.Application.Plugins.Services;
+using MacroDeck.Server.Application.Providers;
 using MacroDeck.Server.Application.Services;
 using MacroDeck.Server.Application.Services.Implementations;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,8 @@ public static class ApplicationModule
 
 		services.AddSingleton<IPluginRegistry, PluginRegistry>();
 		services.AddScoped<IPluginActionInvoker, PluginActionInvoker>();
+		
+		services.AddSingleton<IIntegrationConfigurationProvider, InternalIntegrationConfigurationProvider>();
 
 		services.AddHostedService<CreateDefaultFolderHostedService>();
 		services.AddHostedService<LoadInternalIntegrationsHostedService>();

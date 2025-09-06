@@ -1,10 +1,11 @@
+using System.CommandLine;
 using MacroDeck.SDK.PluginSDK.Clients;
+using MacroDeck.SDK.PluginSDK.Console;
 using MacroDeck.SDK.PluginSDK.Extensions;
 using MacroDeck.SDK.PluginSDK.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using System.CommandLine;
 
 namespace MacroDeck.SDK.PluginSDK;
 
@@ -35,13 +36,16 @@ public sealed class Plugin
 		};
 
 		rootCommand.SetHandler(async (host, port, ssl) =>
-		{
-			_pluginOptions.Host = host;
-			_pluginOptions.Port = port;
-			_pluginOptions.UseSsl = ssl;
+			{
+				_pluginOptions.Host = host;
+				_pluginOptions.Port = port;
+				_pluginOptions.UseSsl = ssl;
 
-			await RunPlugin();
-		}, hostOption, portOption, sslOption);
+				await RunPlugin();
+			},
+			hostOption,
+			portOption,
+			sslOption);
 
 		var result = await rootCommand.InvokeAsync(args);
 		if (result != 0)
@@ -60,7 +64,7 @@ public sealed class Plugin
 			{
 				services.AddSingleton(_pluginOptions);
 				services.AddSingleton<MacroDeckPluginTransport>();
-				
+
 				foreach (var service in _services)
 				{
 					services.Add(service);
@@ -76,15 +80,10 @@ public sealed class Plugin
 		using var scope = host.Services.CreateScope();
 		var transport = scope.ServiceProvider.GetRequiredService<MacroDeckPluginTransport>();
 
-		// Configure Serilog to also log to MacroDeck
-		Log.Logger = new LoggerConfiguration()
-			.MinimumLevel.Debug()
-			.WriteTo.Console()
-			.WriteTo.MacroDeck(scope.ServiceProvider)
-			.CreateLogger();
-
-		Log.Information("Starting plugin {PluginId} connecting to {Host}:{Port}", 
-			_pluginOptions.Id, _pluginOptions.Host, _pluginOptions.Port);
+		Log.Information("Starting plugin {PluginId} connecting to {Host}:{Port}",
+			_pluginOptions.Id,
+			_pluginOptions.Host,
+			_pluginOptions.Port);
 
 		var connected = await transport.Connect();
 		if (!connected)
@@ -94,8 +93,7 @@ public sealed class Plugin
 			return;
 		}
 
-		var registered = await transport.RegisterPlugin(_actions.GetActions().Select(t => 
-			Activator.CreateInstance(t) as Actions.MacroDeckAction).Where(a => a != null)!);
+		var registered = await transport.RegisterPlugin(_actions.GetActions().ToList());
 
 		if (!registered)
 		{
@@ -106,7 +104,33 @@ public sealed class Plugin
 
 		Log.Information("Plugin successfully connected and registered");
 
-		await host.RunAsync();
+		// Start console command interface
+		var consoleRunner = new ConsoleCommandRunner();
+
+		// Register built-in commands
+		var commands = new List<IConsoleCommand>
+		{
+			new ExitCommand()
+		};
+
+		// Add help command (needs reference to all commands)
+		commands.Add(new HelpCommand(commands));
+
+		foreach (var command in commands)
+		{
+			consoleRunner.RegisterCommand(command);
+		}
+
+		// Start console in background
+		var consoleCancellationTokenSource = new CancellationTokenSource();
+		_ = Task.Run(() => consoleRunner.StartConsoleLoop(consoleCancellationTokenSource.Token),
+			consoleCancellationTokenSource.Token);
+
+		// Run the host (this will block until the application shuts down)
+		await host.RunAsync(consoleCancellationTokenSource.Token);
+
+		// Stop console when host stops
+		await consoleCancellationTokenSource.CancelAsync();
 	}
 
 	private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)

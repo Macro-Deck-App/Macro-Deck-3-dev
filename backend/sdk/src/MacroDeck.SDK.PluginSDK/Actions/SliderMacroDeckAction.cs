@@ -23,28 +23,4 @@ public abstract class SliderMacroDeckAction : MacroDeckAction
 	{
 		return Task.CompletedTask;
 	}
-
-	public virtual Task OnSlide<T>(int value, T configuration)
-		where T : class
-	{
-		return Task.CompletedTask;
-	}
-
-	public virtual Task OnSlide<T>(float value, T configuration)
-		where T : class
-	{
-		return Task.CompletedTask;
-	}
-
-	public virtual Task OnSlide<T>(double value, T configuration)
-		where T : class
-	{
-		return Task.CompletedTask;
-	}
-
-	public virtual Task OnSlide<T>(long value, T configuration)
-		where T : class
-	{
-		return Task.CompletedTask;
-	}
 }

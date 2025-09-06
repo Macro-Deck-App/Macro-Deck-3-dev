@@ -1,14 +1,13 @@
-using Google.Protobuf;
-using MacroDeck.Protobuf;
+using MacroDeck.SDK.PluginSDK.Messages;
 using Serilog;
 
 namespace MacroDeck.Server.Application.Plugins.Services;
 
 public class PluginActionInvoker : IPluginActionInvoker
 {
+	private readonly IPluginCommunicationService _communicationService;
 	private readonly ILogger _logger;
 	private readonly IPluginRegistry _pluginRegistry;
-	private readonly IPluginCommunicationService _communicationService;
 
 	public PluginActionInvoker(
 		IPluginRegistry pluginRegistry,
@@ -19,7 +18,7 @@ public class PluginActionInvoker : IPluginActionInvoker
 		_communicationService = communicationService;
 	}
 
-	public async Task<bool> InvokeAction(string pluginId, string actionId, string? configurationJson = null)
+	public async Task<bool> InvokeAction(string pluginId, string actionId, object? parameters = null)
 	{
 		var plugin = await _pluginRegistry.GetPlugin(pluginId);
 		if (plugin == null)
@@ -37,20 +36,12 @@ public class PluginActionInvoker : IPluginActionInvoker
 		var invokeMessage = new InvokeActionMessage
 		{
 			ActionId = actionId,
-			ConfigurationJson = configurationJson ?? ""
-		};
-
-		var message = new PluginMessage
-		{
-			MessageId = Guid.NewGuid().ToString(),
-			MessageType = MessageType.InvokeAction,
-			PluginId = pluginId,
-			Payload = ByteString.CopyFrom(invokeMessage.ToByteArray())
+			Parameters = parameters
 		};
 
 		try
 		{
-			await _communicationService.SendToPlugin(plugin.ConnectionId, message.ToByteArray());
+			await _communicationService.InvokeAction(plugin.ConnectionId, invokeMessage);
 			_logger.Debug("Action {ActionId} invoked on plugin {PluginId}", actionId, pluginId);
 			return true;
 		}

@@ -13,4 +13,6 @@ public abstract class MacroDeckAction
 	///     Only use lowercase letters, numbers, and dots. Avoid special characters and spaces.
 	/// </summary>
 	public abstract string Id { get; }
+
+	public ActionContext Context { get; internal set; } = new();
 }

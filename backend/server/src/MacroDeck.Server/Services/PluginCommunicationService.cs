@@ -1,3 +1,4 @@
+using MacroDeck.SDK.PluginSDK.Messages;
 using MacroDeck.Server.Application.Plugins.Services;
 using MacroDeck.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
@@ -13,8 +14,8 @@ public class PluginCommunicationService : IPluginCommunicationService
 		_hubContext = hubContext;
 	}
 
-	public async Task SendToPlugin(string connectionId, byte[] messageBytes)
+	public async Task InvokeAction(string connectionId, InvokeActionMessage message)
 	{
-		await _hubContext.Clients.Client(connectionId).SendAsync("ReceiveMessage", messageBytes);
+		await _hubContext.Clients.Client(connectionId).SendAsync("InvokeAction", message);
 	}
 }

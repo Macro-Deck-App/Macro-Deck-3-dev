@@ -1,4 +1,4 @@
-using MacroDeck.Protobuf;
+using MacroDeck.SDK.PluginSDK.Messages;
 
 namespace MacroDeck.Server.Application.Plugins.Models;
 
@@ -13,5 +13,4 @@ public class PluginInfo
 	public DateTime ConnectedAt { get; init; }
 	public DateTime? LastHeartbeat { get; set; }
 	public List<ActionDefinition> Actions { get; init; } = [];
-	public byte[]? SessionKey { get; set; }
 }

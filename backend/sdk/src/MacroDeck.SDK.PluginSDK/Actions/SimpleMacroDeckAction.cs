@@ -1,15 +1,13 @@
 namespace MacroDeck.SDK.PluginSDK.Actions;
 
+/// <summary>
+///     Base class for simple actions that execute when triggered
+/// </summary>
 public abstract class SimpleMacroDeckAction : MacroDeckAction
 {
-	public virtual Task OnInvoke()
-	{
-		return Task.CompletedTask;
-	}
-
-	public virtual Task OnInvoke<T>(T configuration)
-		where T : class
-	{
-		return Task.CompletedTask;
-	}
+	/// <summary>
+	///     Execute the simple action
+	/// </summary>
+	/// <returns>Task representing the async operation</returns>
+	public abstract Task OnInvoke();
 }

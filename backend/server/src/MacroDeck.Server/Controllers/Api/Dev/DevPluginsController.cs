@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MacroDeck.Server.Application.Plugins.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,41 +33,26 @@ public class DevPluginsController : BaseController
 			Actions = p.Actions.Select(a => new
 			{
 				a.ActionId,
-				a.ActionName,
-				a.Description,
-				ConfigurationFields = a.ConfigurationFields.Select(cf => new
-				{
-					cf.FieldName,
-					cf.FieldType,
-					cf.Required,
-					cf.DefaultValue
-				})
+				a.ActionName
 			})
 		});
 
 		return Ok(pluginDtos);
 	}
 
-	[HttpPost("{pluginId}/callAction/{actionId}")]
-	public async Task<IActionResult> CallAction(
-		string pluginId,
+	[HttpPost("/api/dev/actions/{actionId}/invoke")]
+	public async Task<IActionResult> InvokeAction(
 		string actionId,
 		[FromBody] object? actionConfig = null)
 	{
-		var plugin = await _pluginRegistry.GetPlugin(pluginId);
+		// Find plugin by action ID since action IDs are unique
+		var plugin = await _pluginRegistry.GetPluginByActionId(actionId);
 		if (plugin == null)
 		{
-			return NotFound($"Plugin '{pluginId}' not found");
+			return NotFound($"Action '{actionId}' not found");
 		}
 
-		if (!await _pluginRegistry.HasAction(pluginId, actionId))
-		{
-			return NotFound($"Action '{actionId}' not found in plugin '{pluginId}'");
-		}
-
-		var configJson = actionConfig != null ? JsonSerializer.Serialize(actionConfig) : null;
-
-		var success = await _actionInvoker.InvokeAction(pluginId, actionId, configJson);
+		var success = await _actionInvoker.InvokeAction(plugin.PluginId, actionId, actionConfig);
 
 		if (success)
 		{

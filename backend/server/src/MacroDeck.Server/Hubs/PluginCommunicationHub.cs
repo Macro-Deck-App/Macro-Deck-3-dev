@@ -1,26 +1,21 @@
-using System.Security.Cryptography;
-using Google.Protobuf;
-using MacroDeck.Protobuf;
+using MacroDeck.SDK.PluginSDK.Hubs;
+using MacroDeck.SDK.PluginSDK.Messages;
 using MacroDeck.Server.Application.Plugins.Services;
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
+using Serilog.Events;
 using ILogger = Serilog.ILogger;
-using ProtobufLogLevel = MacroDeck.Protobuf.LogLevel;
 
 namespace MacroDeck.Server.Hubs;
 
-public class PluginCommunicationHub : Hub
+public class PluginCommunicationHub : Hub<IPluginCommunicationClient>
 {
-	private readonly IPluginEncryptionService _encryptionService;
 	private readonly ILogger _logger = Log.ForContext<PluginCommunicationHub>();
 	private readonly IPluginRegistry _pluginRegistry;
 
-	public PluginCommunicationHub(
-		IPluginRegistry pluginRegistry,
-		IPluginEncryptionService encryptionService)
+	public PluginCommunicationHub(IPluginRegistry pluginRegistry)
 	{
 		_pluginRegistry = pluginRegistry;
-		_encryptionService = encryptionService;
 	}
 
 	public override async Task OnConnectedAsync()
@@ -47,198 +42,169 @@ public class PluginCommunicationHub : Hub
 		await base.OnDisconnectedAsync(exception);
 	}
 
-	public async Task<byte[]> SendMessage(byte[] messageBytes)
+	// Connection handling
+	public async Task<ConnectResponseMessage> Connect(ConnectMessage connectMessage)
 	{
+		_logger.Verbose("Received Connect message from plugin {ExtensionId} (Connection: {ConnectionId})",
+			connectMessage.ExtensionId, Context.ConnectionId);
+
 		try
 		{
-			var message = PluginMessage.Parser.ParseFrom(messageBytes);
-			_logger.Verbose("Received message {MessageType} from {ConnectionId}",
-				message.MessageType,
-				Context.ConnectionId);
+			var success = await _pluginRegistry.RegisterPlugin(Context.ConnectionId, connectMessage);
+			var plugin = await _pluginRegistry.GetPluginByConnectionId(Context.ConnectionId);
 
-			return message.MessageType switch
+			return new ConnectResponseMessage
 			{
-				MessageType.Connect => await HandleConnect(message),
-				MessageType.RegisterPlugin => await HandleRegisterPlugin(message),
-				MessageType.Heartbeat => await HandleHeartbeat(message),
-				MessageType.LogMessage => await HandleLogMessage(message),
-				MessageType.KeyExchange => await HandleKeyExchange(message),
-				MessageType.InvokeActionResponse => await HandleInvokeActionResponse(message),
-				_ => CreateErrorResponse(message.MessageId, $"Unknown message type: {message.MessageType}")
+				Success = success,
+				Message = success ? "Connected successfully" : "Connection failed",
+				SessionId = plugin?.SessionId ?? ""
 			};
 		}
 		catch (Exception ex)
 		{
-			_logger.Error(ex, "Error processing message from {ConnectionId}", Context.ConnectionId);
-			return CreateErrorResponse(Guid.NewGuid().ToString(), "Internal server error");
-		}
-	}
-
-	private async Task<byte[]> HandleConnect(PluginMessage message)
-	{
-		var connectMessage = ConnectMessage.Parser.ParseFrom(message.Payload);
-		var success = await _pluginRegistry.RegisterPlugin(Context.ConnectionId, connectMessage);
-
-		var plugin = await _pluginRegistry.GetPluginByConnectionId(Context.ConnectionId);
-		var publicKey = GenerateServerKeyPair();
-
-		var response = new ConnectResponseMessage
-		{
-			Success = success,
-			Message = success ? "Connected successfully" : "Connection failed",
-			SessionId = plugin?.SessionId ?? "",
-			PublicKey = ByteString.CopyFrom(publicKey)
-		};
-
-		return CreateResponse(message.MessageId, MessageType.ConnectResponse, response);
-	}
-
-	private async Task<byte[]> HandleRegisterPlugin(PluginMessage message)
-	{
-		var registerMessage = RegisterPluginMessage.Parser.ParseFrom(message.Payload);
-		var success = await _pluginRegistry.UpdatePluginActions(message.PluginId, registerMessage.Actions);
-
-		var response = new RegisterPluginResponseMessage
-		{
-			Success = success,
-			Message = success ? "Plugin registered successfully" : "Plugin registration failed"
-		};
-
-		return CreateResponse(message.MessageId, MessageType.RegisterPluginResponse, response);
-	}
-
-	private async Task<byte[]> HandleHeartbeat(PluginMessage message)
-	{
-		await _pluginRegistry.UpdateHeartbeat(Context.ConnectionId);
-		return CreateResponse(message.MessageId,
-			MessageType.Heartbeat,
-			new HeartbeatMessage
+			_logger.Error(ex, "Error handling connect from plugin {ExtensionId}", connectMessage.ExtensionId);
+			return new ConnectResponseMessage
 			{
-				Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-			});
+				Success = false,
+				Message = "Connection failed due to server error"
+			};
+		}
 	}
 
-	private Task<byte[]> HandleLogMessage(PluginMessage message)
+	// Plugin registration
+	public async Task<RegisterExtensionResponseMessage> RegisterExtension(string pluginId, RegisterExtensionMessage registerMessage)
 	{
-		var logMessage = LogMessage.Parser.ParseFrom(message.Payload);
+		_logger.Verbose("Received RegisterExtension message from plugin {PluginId} (Connection: {ConnectionId})",
+			pluginId, Context.ConnectionId);
 
-		switch (logMessage.Level)
+		try
 		{
-			case ProtobufLogLevel.Trace:
-				_logger.Verbose("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
-			case ProtobufLogLevel.Debug:
-				_logger.Debug("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
-			case ProtobufLogLevel.Information:
-				_logger.Information("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
-			case ProtobufLogLevel.Warning:
-				_logger.Warning("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
-			case ProtobufLogLevel.Error:
-				_logger.Error("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
-			case ProtobufLogLevel.Critical:
-				_logger.Fatal("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
-			default:
-				_logger.Information("[Plugin:{PluginId}] [{Category}] {Message}",
-					message.PluginId,
-					logMessage.Category,
-					logMessage.Message);
-				break;
+			var success = await _pluginRegistry.UpdatePluginActions(pluginId, registerMessage.Actions);
+
+			return new RegisterExtensionResponseMessage
+			{
+				Success = success,
+				Message = success ? "Extension registered successfully" : "Extension registration failed"
+			};
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling RegisterExtension from plugin {PluginId}", pluginId);
+			return new RegisterExtensionResponseMessage
+			{
+				Success = false,
+				Message = "Registration failed due to server error"
+			};
+		}
+	}
+
+	// Heartbeat
+	public async Task Heartbeat(string pluginId, HeartbeatMessage heartbeatMessage)
+	{
+		_logger.Verbose("Received Heartbeat from plugin {PluginId} (Connection: {ConnectionId})",
+			pluginId, Context.ConnectionId);
+
+		try
+		{
+			await _pluginRegistry.UpdateHeartbeat(Context.ConnectionId);
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling Heartbeat from plugin {PluginId}", pluginId);
+		}
+	}
+
+	// Logging
+	public Task LogMessage(string pluginId, LogMessage logMessage)
+	{
+		try
+		{
+			switch (logMessage.Level)
+			{
+				case LogEventLevel.Verbose:
+					_logger.Verbose("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+				case LogEventLevel.Debug:
+					_logger.Debug("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+				case LogEventLevel.Information:
+					_logger.Information("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+				case LogEventLevel.Warning:
+					_logger.Warning("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+				case LogEventLevel.Error:
+					_logger.Error("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+				case LogEventLevel.Fatal:
+					_logger.Fatal("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+				default:
+					_logger.Information("[Plugin:{PluginId}] [{Category}] {Message}",
+						pluginId, logMessage.Category, logMessage.Message);
+					break;
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling LogMessage from plugin {PluginId}", pluginId);
 		}
 
-		return Task.FromResult(CreateResponse(message.MessageId, MessageType.LogMessage, new LogMessage()));
+		return Task.CompletedTask;
 	}
 
-	private async Task<byte[]> HandleKeyExchange(PluginMessage message)
+	// Action response handling
+	public Task InvokeActionResponse(string pluginId, InvokeActionResponseMessage response)
 	{
-		var keyExchangeMessage = KeyExchangeMessage.Parser.ParseFrom(message.Payload);
-
-		// Generate server key pair
-		var (serverPublicKey, _) = _encryptionService.GenerateKeyPair();
-
-		// Generate session key
-		var sessionKey = _encryptionService.GenerateSessionKey();
-
-		// Encrypt session key with client's public key
-		var clientPublicKey = keyExchangeMessage.PublicKey.ToByteArray();
-		var encryptedSessionKey = _encryptionService.EncryptSessionKey(sessionKey, clientPublicKey);
-
-		// Store session key for this plugin
-		var plugin = await _pluginRegistry.GetPluginByConnectionId(Context.ConnectionId);
-		if (plugin != null)
+		try
 		{
-			plugin.SessionKey = sessionKey;
-			_logger.Debug("Stored session key for plugin {PluginId}", plugin.PluginId);
+			_logger.Debug("Received action response from plugin {PluginId}: Success={Success}, Message={Message}",
+				pluginId, response.Success, response.Message);
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling InvokeActionResponse from plugin {PluginId}", pluginId);
 		}
 
-		var response = new KeyExchangeResponseMessage
+		return Task.CompletedTask;
+	}
+
+	// Server-to-Client methods (type-safe)
+	
+	/// <summary>
+	/// Sends an action invocation request to a specific plugin
+	/// </summary>
+	public async Task SendInvokeActionToPlugin(string connectionId, InvokeActionMessage message)
+	{
+		try
 		{
-			PublicKey = ByteString.CopyFrom(serverPublicKey),
-			EncryptedSessionKey = ByteString.CopyFrom(encryptedSessionKey)
-		};
-
-		return CreateResponse(message.MessageId, MessageType.KeyExchangeResponse, response);
-	}
-
-	private Task<byte[]> HandleInvokeActionResponse(PluginMessage message)
-	{
-		var response = InvokeActionResponseMessage.Parser.ParseFrom(message.Payload);
-		_logger.Debug("Received action response from plugin {PluginId}: Success={Success}, Message={Message}",
-			message.PluginId,
-			response.Success,
-			response.Message);
-
-		return Task.FromResult(Array.Empty<byte>());
-	}
-
-	private static byte[] CreateResponse(string messageId, MessageType messageType, IMessage payload)
-	{
-		var response = new PluginMessage
+			await Clients.Client(connectionId).InvokeAction(message);
+		}
+		catch (Exception ex)
 		{
-			MessageId = messageId,
-			MessageType = messageType,
-			Payload = ByteString.CopyFrom(payload.ToByteArray())
-		};
-
-		return response.ToByteArray();
+			_logger.Error(ex, "Error sending InvokeAction to plugin connection {ConnectionId}", connectionId);
+		}
 	}
 
-	private byte[] CreateErrorResponse(string messageId, string error)
+
+	/// <summary>
+	/// Requests a plugin to shutdown gracefully
+	/// </summary>
+	public async Task RequestPluginShutdown(string connectionId)
 	{
-		var response = new ConnectResponseMessage
+		try
 		{
-			Success = false,
-			Message = error
-		};
-
-		return CreateResponse(messageId, MessageType.ConnectResponse, response);
-	}
-
-	private static byte[] GenerateServerKeyPair()
-	{
-		using var rsa = RSA.Create(2048);
-		return rsa.ExportRSAPublicKey();
+			await Clients.Client(connectionId).RequestShutdown();
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error requesting plugin shutdown, connection {ConnectionId}", connectionId);
+		}
 	}
 }

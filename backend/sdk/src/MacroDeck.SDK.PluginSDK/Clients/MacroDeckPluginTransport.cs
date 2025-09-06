@@ -1,26 +1,34 @@
-using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json;
-using Google.Protobuf;
-using MacroDeck.Protobuf;
 using MacroDeck.SDK.PluginSDK.Actions;
+using MacroDeck.SDK.PluginSDK.Configuration;
+using MacroDeck.SDK.PluginSDK.Hubs;
+using MacroDeck.SDK.PluginSDK.Messages;
 using MacroDeck.SDK.PluginSDK.Options;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Events;
-using ProtobufLogLevel = MacroDeck.Protobuf.LogLevel;
 
 namespace MacroDeck.SDK.PluginSDK.Clients;
 
-public class MacroDeckPluginTransport : IDisposable
+public class MacroDeckPluginTransport : IDisposable, IPluginCommunicationClient
 {
+	private readonly IIntegrationConfigurationProvider? _configurationProvider;
 	private readonly ILogger _logger = Log.ForContext<MacroDeckPluginTransport>();
-	private readonly ConcurrentDictionary<string, TaskCompletionSource<byte[]>> _pendingRequests = new();
 	private readonly PluginOptions _pluginOptions;
+	private readonly Dictionary<string, Type> _registeredActionTypes = new();
+	private readonly IServiceProvider _serviceProvider;
 	private HubConnection? _connection;
 
-	public MacroDeckPluginTransport(PluginOptions pluginOptions)
+	public MacroDeckPluginTransport(
+		PluginOptions pluginOptions,
+		IServiceProvider serviceProvider,
+		IIntegrationConfigurationProvider? configurationProvider = null)
 	{
 		_pluginOptions = pluginOptions;
+		_serviceProvider = serviceProvider;
+		_configurationProvider = configurationProvider;
 	}
 
 	public bool IsConnected { get; private set; }
@@ -31,6 +39,129 @@ public class MacroDeckPluginTransport : IDisposable
 	{
 		IsConnected = false;
 		_connection?.DisposeAsync();
+	}
+
+
+	public async Task InvokeAction(InvokeActionMessage message)
+	{
+		try
+		{
+			_logger.Debug("Received action invocation: {ActionId}", message.ActionId);
+
+			if (!_registeredActionTypes.TryGetValue(message.ActionId, out var actionType))
+			{
+				_logger.Warning("Action not found: {ActionId}", message.ActionId);
+
+				var notFoundResponse = new InvokeActionResponseMessage
+				{
+					Success = false,
+					Message = $"Action '{message.ActionId}' not found"
+				};
+
+				await _connection!.InvokeAsync("InvokeActionResponse", _pluginOptions.Id, notFoundResponse);
+				return;
+			}
+
+			// Create action instance from DI
+			using var scope = _serviceProvider.CreateScope();
+			var action = (MacroDeckAction)ActivatorUtilities.CreateInstance(scope.ServiceProvider, actionType);
+
+			switch (action)
+			{
+				// Execute the action based on its type
+				case SimpleMacroDeckAction simpleAction:
+					simpleAction.Context = new ActionContext
+					{
+						Configuration = message.Parameters
+					};
+					await simpleAction.OnInvoke();
+					break;
+				case SliderMacroDeckAction sliderAction:
+					/*	when message.Parameters?.TryGetValue("sliderValue", out var sliderValue) == true:
+						// Handle different slider value types
+						switch (sliderValue)
+						{
+							case int intValue:
+								await sliderAction.OnSlide(intValue);
+								break;
+							case float floatValue:
+								await sliderAction.OnSlide(floatValue);
+								break;
+							case double doubleValue:
+								await sliderAction.OnSlide(doubleValue);
+								break;
+							case long longValue:
+								await sliderAction.OnSlide(longValue);
+								break;
+							default:
+								_logger.Warning("Unsupported slider value type: {ValueType}", sliderValue?.GetType());
+								break;
+						}*/
+
+					break;
+				default:
+				{
+					_logger.Warning(
+						"Action {ActionId} of type {ActionType} is not supported or missing required parameters",
+						message.ActionId,
+						actionType.Name);
+
+					var notSupportedResponse = new InvokeActionResponseMessage
+					{
+						Success = false,
+						Message = $"Action '{message.ActionId}' type not supported or missing parameters"
+					};
+
+					await _connection!.InvokeAsync("InvokeActionResponse", _pluginOptions.Id, notSupportedResponse);
+					return;
+				}
+			}
+
+			var response = new InvokeActionResponseMessage
+			{
+				Success = true,
+				Message = "Action invoked successfully"
+			};
+
+			await _connection!.InvokeAsync("InvokeActionResponse", _pluginOptions.Id, response);
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling action invocation");
+
+			var errorResponse = new InvokeActionResponseMessage
+			{
+				Success = false,
+				Message = $"Error invoking action: {ex.Message}"
+			};
+
+			if (_connection != null)
+			{
+				await _connection.InvokeAsync("InvokeActionResponse", _pluginOptions.Id, errorResponse);
+			}
+		}
+	}
+
+
+	public Task RequestShutdown()
+	{
+		try
+		{
+			_logger.Information("Received shutdown request from server");
+
+			// TODO: Implement graceful shutdown logic
+			// This could trigger cleanup and dispose resources
+
+			IsConnected = false;
+			_connection?.DisposeAsync();
+
+			return Task.CompletedTask;
+		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling shutdown request");
+			return Task.CompletedTask;
+		}
 	}
 
 	public async Task<bool> Connect()
@@ -45,7 +176,9 @@ public class MacroDeckPluginTransport : IDisposable
 				.WithAutomaticReconnect()
 				.Build();
 
-			_connection.On<byte[]>("ReceiveMessage", HandleIncomingMessage);
+			// Register server-to-client methods (type-safe)
+			_connection.On<InvokeActionMessage>("InvokeAction", InvokeAction);
+			_connection.On("RequestShutdown", RequestShutdown);
 			_connection.Reconnected += OnReconnected;
 			_connection.Closed += OnDisconnected;
 
@@ -56,8 +189,6 @@ public class MacroDeckPluginTransport : IDisposable
 			{
 				IsConnected = true;
 				_logger.Information("Connected to MacroDeck server at {Url}", url);
-
-				StartHeartbeat();
 				return true;
 			}
 
@@ -71,7 +202,7 @@ public class MacroDeckPluginTransport : IDisposable
 		}
 	}
 
-	public async Task<bool> RegisterPlugin(IEnumerable<MacroDeckAction> actions)
+	public async Task<bool> RegisterPlugin(List<Type> actionTypes)
 	{
 		if (!IsConnected || _connection == null)
 		{
@@ -81,27 +212,36 @@ public class MacroDeckPluginTransport : IDisposable
 
 		try
 		{
-			var actionDefinitions = actions.Select(a => new ActionDefinition
-				{
-					ActionId = a.Id,
-					ActionName = a.Name,
-					Description = a.Name // For now, using name as description
-				})
-				.ToList();
+			// Store action types locally for execution
+			_registeredActionTypes.Clear();
+			var actionDefinitions = new List<ActionDefinition>();
 
-			var registerMessage = new RegisterPluginMessage();
-			registerMessage.Actions.AddRange(actionDefinitions);
-
-			var message = new PluginMessage
+			foreach (var actionType in actionTypes)
 			{
-				MessageId = Guid.NewGuid().ToString(),
-				MessageType = MessageType.RegisterPlugin,
-				PluginId = _pluginOptions.Id,
-				Payload = ByteString.CopyFrom(registerMessage.ToByteArray())
+				// Create a temporary instance to get the action metadata
+				var tempAction = (MacroDeckAction)ActivatorUtilities.CreateInstance(_serviceProvider, actionType);
+
+				_registeredActionTypes[tempAction.Id] = actionType;
+				_logger.Verbose("Registered action type locally: {ActionId} - {ActionName} ({ActionType})",
+					tempAction.Id,
+					tempAction.Name,
+					actionType.Name);
+
+				actionDefinitions.Add(new ActionDefinition
+				{
+					ActionId = tempAction.Id,
+					ActionName = tempAction.Name
+				});
+			}
+
+			var registerMessage = new RegisterExtensionMessage
+			{
+				Actions = actionDefinitions
 			};
 
-			var response = await SendMessageWithResponse(message);
-			var registerResponse = RegisterPluginResponseMessage.Parser.ParseFrom(response.Payload);
+			var registerResponse = await _connection!.InvokeAsync<RegisterExtensionResponseMessage>("RegisterExtension",
+				_pluginOptions.Id,
+				registerMessage);
 
 			if (registerResponse.Success)
 			{
@@ -129,65 +269,40 @@ public class MacroDeckPluginTransport : IDisposable
 
 		try
 		{
-			var protobufLogLevel = level switch
-			{
-				LogEventLevel.Verbose => ProtobufLogLevel.Trace,
-				LogEventLevel.Debug => ProtobufLogLevel.Debug,
-				LogEventLevel.Information => ProtobufLogLevel.Information,
-				LogEventLevel.Warning => ProtobufLogLevel.Warning,
-				LogEventLevel.Error => ProtobufLogLevel.Error,
-				LogEventLevel.Fatal => ProtobufLogLevel.Critical,
-				_ => ProtobufLogLevel.Information
-			};
-
 			var logMessage = new LogMessage
 			{
-				Level = protobufLogLevel,
+				Level = level,
 				Message = message,
 				Category = category,
 				Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-				ExceptionJson = exception != null ? JsonSerializer.Serialize(exception) : ""
+				ExceptionJson = exception != null ? JsonSerializer.Serialize(exception) : null
 			};
 
-			var pluginMessage = new PluginMessage
-			{
-				MessageId = Guid.NewGuid().ToString(),
-				MessageType = MessageType.LogMessage,
-				PluginId = _pluginOptions.Id,
-				Payload = ByteString.CopyFrom(logMessage.ToByteArray())
-			};
-
-			await SendMessage(pluginMessage);
+			await _connection!.InvokeAsync("LogMessage", _pluginOptions.Id, logMessage);
 		}
 		catch (Exception ex)
 		{
 			// Avoid infinite logging loop
-			Console.WriteLine($"Failed to send log message: {ex.Message}");
+			System.Console.WriteLine($"Failed to send log message: {ex.Message}");
 		}
 	}
 
 	private async Task<bool> SendConnect()
 	{
+		// Auto-detect SDK version from assembly
+		var sdkVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+
 		var connectMessage = new ConnectMessage
 		{
-			PluginId = _pluginOptions.Id,
-			PluginName = _pluginOptions.Name,
-			PluginVersion = _pluginOptions.Version.ToString(),
-			SdkVersion = "1.0.0" // TODO: Get from assembly
-		};
-
-		var message = new PluginMessage
-		{
-			MessageId = Guid.NewGuid().ToString(),
-			MessageType = MessageType.Connect,
-			PluginId = _pluginOptions.Id,
-			Payload = ByteString.CopyFrom(connectMessage.ToByteArray())
+			ExtensionId = _pluginOptions.Id,
+			ExtensionName = _pluginOptions.Name,
+			ExtensionVersion = _pluginOptions.Version.ToString(),
+			SdkVersion = sdkVersion
 		};
 
 		try
 		{
-			var response = await SendMessageWithResponse(message);
-			var connectResponse = ConnectResponseMessage.Parser.ParseFrom(response.Payload);
+			var connectResponse = await _connection!.InvokeAsync<ConnectResponseMessage>("Connect", connectMessage);
 
 			if (connectResponse.Success)
 			{
@@ -203,129 +318,6 @@ public class MacroDeckPluginTransport : IDisposable
 			_logger.Error(ex, "Error sending connect message");
 			return false;
 		}
-	}
-
-	private void StartHeartbeat()
-	{
-		_ = Task.Run(async () =>
-		{
-			while (IsConnected && _connection?.State == HubConnectionState.Connected)
-			{
-				try
-				{
-					var heartbeatMessage = new HeartbeatMessage
-					{
-						Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-					};
-
-					var message = new PluginMessage
-					{
-						MessageId = Guid.NewGuid().ToString(),
-						MessageType = MessageType.Heartbeat,
-						PluginId = _pluginOptions.Id,
-						Payload = ByteString.CopyFrom(heartbeatMessage.ToByteArray())
-					};
-
-					await SendMessage(message);
-					await Task.Delay(30000); // Heartbeat every 30 seconds
-				}
-				catch (Exception ex)
-				{
-					_logger.Warning(ex, "Failed to send heartbeat");
-					await Task.Delay(5000); // Retry after 5 seconds on error
-				}
-			}
-		});
-	}
-
-	private async Task SendMessage(PluginMessage message)
-	{
-		if (_connection?.State == HubConnectionState.Connected)
-		{
-			await _connection.InvokeAsync("SendMessage", message.ToByteArray());
-		}
-	}
-
-	private async Task<PluginMessage> SendMessageWithResponse(PluginMessage message)
-	{
-		var tcs = new TaskCompletionSource<byte[]>();
-		_pendingRequests[message.MessageId] = tcs;
-
-		try
-		{
-			await SendMessage(message);
-			var responseBytes = await tcs.Task.WaitAsync(TimeSpan.FromSeconds(30));
-			return PluginMessage.Parser.ParseFrom(responseBytes);
-		}
-		finally
-		{
-			_pendingRequests.TryRemove(message.MessageId, out _);
-		}
-	}
-
-	private void HandleIncomingMessage(byte[] messageBytes)
-	{
-		try
-		{
-			var message = PluginMessage.Parser.ParseFrom(messageBytes);
-
-			// Check if this is a response to a pending request
-			if (_pendingRequests.TryRemove(message.MessageId, out var tcs))
-			{
-				tcs.SetResult(messageBytes);
-				return;
-			}
-
-			// Handle server-initiated messages (like action invocations)
-			_ = Task.Run(async () => await ProcessServerMessage(message));
-		}
-		catch (Exception ex)
-		{
-			_logger.Error(ex, "Error handling incoming message");
-		}
-	}
-
-	private async Task ProcessServerMessage(PluginMessage message)
-	{
-		try
-		{
-			switch (message.MessageType)
-			{
-				case MessageType.InvokeAction:
-					await HandleActionInvocation(message);
-					break;
-				default:
-					_logger.Warning("Unhandled server message type: {MessageType}", message.MessageType);
-					break;
-			}
-		}
-		catch (Exception ex)
-		{
-			_logger.Error(ex, "Error processing server message {MessageType}", message.MessageType);
-		}
-	}
-
-	private async Task HandleActionInvocation(PluginMessage message)
-	{
-		// This will be implemented to work with the action handler system
-		_logger.Debug("Received action invocation: {MessageId}", message.MessageId);
-
-		// TODO: Integrate with action handler to actually invoke actions
-		var response = new InvokeActionResponseMessage
-		{
-			Success = true,
-			Message = "Action invoked successfully"
-		};
-
-		var responseMessage = new PluginMessage
-		{
-			MessageId = message.MessageId,
-			MessageType = MessageType.InvokeActionResponse,
-			PluginId = _pluginOptions.Id,
-			Payload = ByteString.CopyFrom(response.ToByteArray())
-		};
-
-		await SendMessage(responseMessage);
 	}
 
 	private async Task OnReconnected(string? connectionId)

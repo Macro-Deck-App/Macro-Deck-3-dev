@@ -6,7 +6,7 @@ public class MyCustomAction : SimpleMacroDeckAction
 {
 	public override string Name => "My Custom Action";
 
-	public override string Id => "com.example.plugin.mycustomaction";
+	public override string Id => "app.macrodeck.exampleplugin.mycustomaction";
 
 	public override Task OnInvoke()
 	{

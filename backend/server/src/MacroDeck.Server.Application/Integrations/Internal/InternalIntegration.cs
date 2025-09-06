@@ -1,26 +1,18 @@
-using MacroDeck.SDK.PluginSDK.Configuration;
-using MacroDeck.SDK.PluginSDK.Integration;
-using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using MacroDeck.SDK.PluginSDK.Extensions;
 
 namespace MacroDeck.Server.Application.Integrations.Internal;
 
-public abstract class InternalIntegration : MacroDeckIntegration
+/// <summary>
+/// Obsolete: Use InternalExtension from MacroDeck.SDK.PluginSDK.Extensions instead
+/// </summary>
+[Obsolete("Use InternalExtension from MacroDeck.SDK.PluginSDK.Extensions instead")]
+public abstract class InternalIntegration : InternalExtension
 {
-	protected InternalIntegration(IServiceProvider services)
+	protected InternalIntegration(IServiceProvider services) : base(services)
 	{
-		Services = services;
-		Logger = Services.GetRequiredService<ILogger>();
-		IntegrationConfigurationProvider = Services.GetRequiredService<IIntegrationConfigurationProvider>();
 	}
 
-	public IServiceProvider Services { get; }
-
-	public ILogger Logger { get; }
-
-	public IIntegrationConfigurationProvider IntegrationConfigurationProvider { get; }
-
-	public abstract string Name { get; }
-
 	public abstract string IntegrationId { get; }
+
+	public override string Id => IntegrationId;
 }

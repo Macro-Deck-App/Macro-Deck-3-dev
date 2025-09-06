@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using MacroDeck.Protobuf;
+using MacroDeck.SDK.PluginSDK.Messages;
 using MacroDeck.Server.Application.Plugins.Models;
 using Serilog;
 
@@ -19,36 +19,36 @@ public class PluginRegistry : IPluginRegistry
 
 			var pluginInfo = new PluginInfo
 			{
-				PluginId = connectMessage.PluginId,
-				Name = connectMessage.PluginName,
-				Version = connectMessage.PluginVersion,
+				PluginId = connectMessage.ExtensionId,
+				Name = connectMessage.ExtensionName,
+				Version = connectMessage.ExtensionVersion,
 				SdkVersion = connectMessage.SdkVersion,
 				SessionId = sessionId,
 				ConnectionId = connectionId,
 				ConnectedAt = DateTime.UtcNow
 			};
 
-			if (_pluginsById.TryGetValue(connectMessage.PluginId, out var existingPlugin))
+			if (_pluginsById.TryGetValue(connectMessage.ExtensionId, out var existingPlugin))
 			{
 				_pluginsByConnectionId.TryRemove(existingPlugin.ConnectionId, out _);
 				_logger.Warning("Plugin {PluginId} was already connected, replacing connection",
-					connectMessage.PluginId);
+					connectMessage.ExtensionId);
 			}
 
 			_pluginsByConnectionId[connectionId] = pluginInfo;
-			_pluginsById[connectMessage.PluginId] = pluginInfo;
+			_pluginsById[connectMessage.ExtensionId] = pluginInfo;
 
 			_logger.Information("Plugin {PluginId} ({Name} v{Version}) connected with session {SessionId}",
-				connectMessage.PluginId,
-				connectMessage.PluginName,
-				connectMessage.PluginVersion,
+				connectMessage.ExtensionId,
+				connectMessage.ExtensionName,
+				connectMessage.ExtensionVersion,
 				sessionId);
 
 			return Task.FromResult(true);
 		}
 		catch (Exception ex)
 		{
-			_logger.Error(ex, "Failed to register plugin {PluginId}", connectMessage.PluginId);
+			_logger.Error(ex, "Failed to register plugin {PluginId}", connectMessage.ExtensionId);
 			return Task.FromResult(false);
 		}
 	}
@@ -94,6 +94,12 @@ public class PluginRegistry : IPluginRegistry
 	public Task<PluginInfo?> GetPluginByConnectionId(string connectionId)
 	{
 		_pluginsByConnectionId.TryGetValue(connectionId, out var plugin);
+		return Task.FromResult(plugin);
+	}
+
+	public Task<PluginInfo?> GetPluginByActionId(string actionId)
+	{
+		var plugin = _pluginsById.Values.FirstOrDefault(p => p.Actions.Any(a => a.ActionId == actionId));
 		return Task.FromResult(plugin);
 	}
 

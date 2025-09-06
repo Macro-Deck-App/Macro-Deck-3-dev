@@ -6,7 +6,9 @@ namespace MacroDeck.SDK.PluginSDK.Extensions;
 
 public static class LoggerConfigurationExtensions
 {
-	public static LoggerConfiguration MacroDeck(this LoggerSinkConfiguration sinkConfiguration, IServiceProvider serviceProvider)
+	public static LoggerConfiguration MacroDeck(
+		this LoggerSinkConfiguration sinkConfiguration,
+		IServiceProvider serviceProvider)
 	{
 		return sinkConfiguration.Sink(new MacroDeckSink(serviceProvider));
 	}
