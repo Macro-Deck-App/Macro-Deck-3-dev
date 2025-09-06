@@ -1,0 +1,86 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacroDeck.Server", "server\src\MacroDeck.Server\MacroDeck.Server.csproj", "{EA930D37-D353-480E-81E6-21403C18FA52}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "server", "server", "{AB6BF09B-E91F-4C1A-8CA5-28D978D870C1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D6504F37-9099-4DBC-AEF4-DC8B269F0E78}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "solution", "solution", "{89F5A8F9-47DD-4A27-A62E-E328C636F1E8}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
+		..\.gitignore = ..\.gitignore
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacroDeck.Server.Infrastructure", "server\src\MacroDeck.Server.Infrastructure\MacroDeck.Server.Infrastructure.csproj", "{01ED492C-C5E3-4846-9391-5F87BB3ED914}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacroDeck.Server.Application", "server\src\MacroDeck.Server.Application\MacroDeck.Server.Application.csproj", "{5D56C024-ECC3-404A-9CBE-A296097FAC74}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sdk", "sdk", "{EA0198CA-AD20-4F06-81F2-43B04D85768B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{44106BAB-A21C-4951-BD83-89CD5C31EBF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacroDeck.Server.Domain", "server\src\MacroDeck.Server.Domain\MacroDeck.Server.Domain.csproj", "{489B1738-1E98-40A7-AE85-9C284CCBC6F4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{2DD001CF-DC1D-49CE-9218-E1348FA1B1F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamplePlugin", "sdk\examples\ExamplePlugin\ExamplePlugin.csproj", "{30CEBD2E-1B6D-4047-AA03-490DBC616826}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacroDeck.SDK.PluginSDK", "sdk\src\MacroDeck.SDK.PluginSDK\MacroDeck.SDK.PluginSDK.csproj", "{17AC55AA-7C17-4DA7-BC2E-3853771A3AA5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "protobuf", "protobuf", "{5F5ABF39-8D0A-47F5-94A4-B03172B908F8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C0BEE9E7-F5BE-48CE-8C4F-BF6C8018BAD5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MacroDeck.Protobuf", "protobuf\src\MacroDeck.Protobuf\MacroDeck.Protobuf.csproj", "{324311D8-1E69-448A-AD18-48EC967333F6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EA930D37-D353-480E-81E6-21403C18FA52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA930D37-D353-480E-81E6-21403C18FA52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA930D37-D353-480E-81E6-21403C18FA52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA930D37-D353-480E-81E6-21403C18FA52}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01ED492C-C5E3-4846-9391-5F87BB3ED914}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01ED492C-C5E3-4846-9391-5F87BB3ED914}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01ED492C-C5E3-4846-9391-5F87BB3ED914}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01ED492C-C5E3-4846-9391-5F87BB3ED914}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D56C024-ECC3-404A-9CBE-A296097FAC74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D56C024-ECC3-404A-9CBE-A296097FAC74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D56C024-ECC3-404A-9CBE-A296097FAC74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D56C024-ECC3-404A-9CBE-A296097FAC74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{489B1738-1E98-40A7-AE85-9C284CCBC6F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{489B1738-1E98-40A7-AE85-9C284CCBC6F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{489B1738-1E98-40A7-AE85-9C284CCBC6F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{489B1738-1E98-40A7-AE85-9C284CCBC6F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30CEBD2E-1B6D-4047-AA03-490DBC616826}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30CEBD2E-1B6D-4047-AA03-490DBC616826}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30CEBD2E-1B6D-4047-AA03-490DBC616826}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30CEBD2E-1B6D-4047-AA03-490DBC616826}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17AC55AA-7C17-4DA7-BC2E-3853771A3AA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17AC55AA-7C17-4DA7-BC2E-3853771A3AA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17AC55AA-7C17-4DA7-BC2E-3853771A3AA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17AC55AA-7C17-4DA7-BC2E-3853771A3AA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{324311D8-1E69-448A-AD18-48EC967333F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{324311D8-1E69-448A-AD18-48EC967333F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{324311D8-1E69-448A-AD18-48EC967333F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{324311D8-1E69-448A-AD18-48EC967333F6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D6504F37-9099-4DBC-AEF4-DC8B269F0E78} = {AB6BF09B-E91F-4C1A-8CA5-28D978D870C1}
+		{EA930D37-D353-480E-81E6-21403C18FA52} = {D6504F37-9099-4DBC-AEF4-DC8B269F0E78}
+		{01ED492C-C5E3-4846-9391-5F87BB3ED914} = {D6504F37-9099-4DBC-AEF4-DC8B269F0E78}
+		{5D56C024-ECC3-404A-9CBE-A296097FAC74} = {D6504F37-9099-4DBC-AEF4-DC8B269F0E78}
+		{44106BAB-A21C-4951-BD83-89CD5C31EBF6} = {EA0198CA-AD20-4F06-81F2-43B04D85768B}
+		{489B1738-1E98-40A7-AE85-9C284CCBC6F4} = {D6504F37-9099-4DBC-AEF4-DC8B269F0E78}
+		{2DD001CF-DC1D-49CE-9218-E1348FA1B1F7} = {EA0198CA-AD20-4F06-81F2-43B04D85768B}
+		{30CEBD2E-1B6D-4047-AA03-490DBC616826} = {2DD001CF-DC1D-49CE-9218-E1348FA1B1F7}
+		{17AC55AA-7C17-4DA7-BC2E-3853771A3AA5} = {44106BAB-A21C-4951-BD83-89CD5C31EBF6}
+		{C0BEE9E7-F5BE-48CE-8C4F-BF6C8018BAD5} = {5F5ABF39-8D0A-47F5-94A4-B03172B908F8}
+		{324311D8-1E69-448A-AD18-48EC967333F6} = {C0BEE9E7-F5BE-48CE-8C4F-BF6C8018BAD5}
+	EndGlobalSection
+EndGlobal
