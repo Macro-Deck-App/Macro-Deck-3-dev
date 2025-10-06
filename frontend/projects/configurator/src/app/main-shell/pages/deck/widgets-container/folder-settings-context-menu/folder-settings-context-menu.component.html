@@ -1,0 +1,57 @@
+<div class="context-menu shadow" cdkMenu>
+  <div class="context-menu-item">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <span>Rows</span>
+      <div class="d-flex align-items-center">
+        <button class="btn btn-sm btn-outline-light ms-2"
+                (click)="removeRow()"
+                [attr.aria-disabled]="!canRemoveRow"
+                [class.disabled]="!canRemoveRow"
+        >
+          -
+        </button>
+        <span class="ms-2">{{currentFolder?.rows}}</span>
+        <button class="btn btn-sm btn-outline-light ms-2"
+                (click)="addRow()"
+                [attr.aria-disabled]="!canAddRow"
+                [class.disabled]="!canAddRow"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="context-menu-item">
+    <div class="d-flex align-items-center justify-content-between gap-3">
+      <span>Columns</span>
+      <div class="d-flex align-items-center">
+        <button class="btn btn-sm btn-outline-light ms-2"
+                (click)="removeColumn()"
+                [attr.aria-disabled]="!canRemoveColumn"
+                [class.disabled]="!canRemoveColumn"
+        >
+          -
+        </button>
+        <span class="ms-2">{{currentFolder?.columns}}</span>
+        <button class="btn btn-sm btn-outline-light ms-2"
+                (click)="addColumn()"
+                [attr.aria-disabled]="!canAddColumn"
+                [class.disabled]="!canAddColumn"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- <div class="context-menu-item">
+     <div class="d-flex align-items-center justify-content-between gap-3">
+       <span>Background</span>
+       <input type="color"
+              class="form-control form-control-color p-1"
+              [value]="currentFolder?.backgroundColor"
+              (change)="changeBackgroundColor($event)"
+              style="height: 2rem;"
+       >
+     </div>
+   </div>-->
+</div>

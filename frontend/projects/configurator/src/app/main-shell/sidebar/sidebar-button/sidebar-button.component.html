@@ -1,0 +1,13 @@
+<a class="nav-link link-body-emphasis sidebar-button nav-item mb-2 d-flex align-items-center gap-4 px-1"
+   routerLinkActive="active"
+   [class.justify-content-center]="!showText"
+   [routerLink]="routerLink"
+   placement="right"
+   [ngbTooltip]="showText ? null : text"
+   triggers="hover"
+>
+  <i class="sidebar-button-icon {{iconClasses}}"></i>
+  @if (showText) {
+    <span class="fw-lighter">{{text}}</span>
+  }
+</a>

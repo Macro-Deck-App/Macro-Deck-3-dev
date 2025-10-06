@@ -1,0 +1,15 @@
+<app-base-modal [title]="widget.type | widgetTypeName" (crossClicked)="activeModal.dismiss('Cross clicked')">
+  <div class="mb-2 d-flex flex-column gap-3 py-2">
+    <ng-template #editorRef></ng-template>
+  </div>
+  <div class="d-flex flex-row-reverse gap-3">
+    <app-loading-button role="cancel"
+                        (click)="activeModal.dismiss('Cancel clicked')"
+    >Cancel
+    </app-loading-button>
+    <app-loading-button role="default"
+                        (click)="saveWidget()"
+    >Save
+    </app-loading-button>
+  </div>
+</app-base-modal>

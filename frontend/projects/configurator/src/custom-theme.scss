@@ -1,0 +1,31 @@
+$border-radius: .7rem;
+$input-padding-x: 1rem;
+$input-padding-y: .8rem;
+$primary: #4CAF50;
+
+@import 'bootstrap/scss/bootstrap';
+
+.form-control:focus,
+.form-select:focus {
+  outline: none!important;
+  box-shadow: none!important;
+  border-color: $primary!important;
+}
+
+th, td {
+  padding: 1.2rem 0 1.2rem 0!important;
+}
+
+.nav-link.active {
+  background-color: $primary !important;
+}
+
+.btn-lg {
+  border-radius: $border-radius!important;
+}
+
+.card,
+.modal-content {
+  border-radius: $border-radius!important;
+  border: none!important;
+}

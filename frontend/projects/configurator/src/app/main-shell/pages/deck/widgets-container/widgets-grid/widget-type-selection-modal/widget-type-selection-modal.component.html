@@ -1,0 +1,7 @@
+<app-base-modal title="Select widget type" (crossClicked)="activeModal.dismiss('Cross clicked')">
+  <div class="d-flex flex-column gap-2">
+    @for (type of types; track type) {
+      <app-widget-type-button [widgetType]="type" (click)="activeModal.close(type)"></app-widget-type-button>
+    }
+  </div>
+</app-base-modal>

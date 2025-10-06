@@ -1,0 +1,53 @@
+<div class="d-flex flex-column flex-shrink-0 px-2 pb-3 bg-body-tertiary h-100 sidebar"
+    [class.container-sidebar]="open">
+  <ul class="nav nav-pills flex-column mb-auto">
+    <li>
+      <app-sidebar-button [showText]="open"
+                          iconClasses="fa-solid fa-grip"
+                          routerLink="/deck"
+                          text="Deck"
+      ></app-sidebar-button>
+    </li>
+    <li>
+      <app-sidebar-button [showText]="open"
+                          iconClasses="fa-solid fa-robot"
+                          routerLink="/automations"
+                          text="Automations"
+      ></app-sidebar-button>
+    </li>
+    <li>
+      <app-sidebar-button [showText]="open"
+                          iconClasses="fa-solid fa-puzzle-piece"
+                          routerLink="/extensions"
+                          text="Extensions"
+      ></app-sidebar-button>
+    </li>
+    <li>
+      <app-sidebar-button [showText]="open"
+                          iconClasses="fa-solid fa-list"
+                          routerLink="/resources"
+                          text="Resources"
+      ></app-sidebar-button>
+    </li>
+  </ul>
+  <ul class="nav nav-pills flex-column">
+    <li>
+      <app-sidebar-button [showText]="open"
+                          iconClasses="fa-solid fa-code"
+                          routerLink="/developer"
+                          text="Developer"
+      ></app-sidebar-button>
+    </li>
+    <li>
+      <app-sidebar-button [showText]="open"
+                          iconClasses="fa-solid fa-wrench"
+                          routerLink="/settings"
+                          text="Settings"
+      ></app-sidebar-button>
+    </li>
+  </ul>
+  @if (open) {
+    <hr>
+    <span class="text-center text-muted">Macro Deck Next Gen</span>
+  }
+</div>

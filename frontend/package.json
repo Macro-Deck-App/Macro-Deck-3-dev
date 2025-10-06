@@ -1,0 +1,52 @@
+{
+  "name": "frontend",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start-client": "ng serve client --port 8193",
+    "start-configurator": "ng serve configurator --port 8192",
+    "build-client": "ng build client",
+    "build-configurator": "ng build configurator",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^20.2.4",
+    "@angular/cdk": "^20.2.2",
+    "@angular/common": "^20.2.4",
+    "@angular/compiler": "^20.2.4",
+    "@angular/core": "^20.2.4",
+    "@angular/forms": "^20.2.4",
+    "@angular/material": "^20.2.2",
+    "@angular/platform-browser": "^20.2.4",
+    "@angular/platform-browser-dynamic": "^20.2.4",
+    "@angular/router": "^20.2.4",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@mdi/font": "^7.4.47",
+    "@microsoft/signalr": "^8.0.7",
+    "@ng-bootstrap/ng-bootstrap": "^19.0.1",
+    "@popperjs/core": "^2.11.8",
+    "angular-gridster2": "^20.2.2",
+    "bootstrap": "^5.3.6",
+    "ngx-toastr": "^19.0.0",
+    "rxjs": "~7.8.2",
+    "tslib": "^2.8.1",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular/build": "^20.2.2",
+    "@angular/cli": "^20.2.2",
+    "@angular/compiler-cli": "^20.2.4",
+    "@angular/localize": "^20.2.4",
+    "@types/jasmine": "~5.1.8",
+    "jasmine-core": "~5.7.1",
+    "karma": "~6.4.4",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.1",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "ng-packagr": "^20.2.0",
+    "typescript": "~5.8.3"
+  }
+}

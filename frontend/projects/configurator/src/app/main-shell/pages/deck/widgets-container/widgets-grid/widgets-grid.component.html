@@ -1,0 +1,20 @@
+<div #widgetsWrapper
+     class="widgets-wrapper"
+     (cdkDropListDropped)="drop($event)"
+     cdkDropList
+>
+  @if (widgets) {
+    @for (widget of widgets; track widget; let index = $index) {
+      <app-widget-wrapper [widget]="getWidgetFromIndex(index)"
+                          [widgetStyle]="getWidgetStyle(index)"
+                          [widgetContentStyle]="getWidgetContentStyle()"
+                          [index]="index"
+                          (createWidget)="createWidget(index)"
+                          (editWidget)="editWidget(index)"
+                          (deleteWidget)="deleteWidget(index)"
+      ></app-widget-wrapper>
+    }
+  } @else {
+    <app-loading-spinner></app-loading-spinner>
+  }
+</div>

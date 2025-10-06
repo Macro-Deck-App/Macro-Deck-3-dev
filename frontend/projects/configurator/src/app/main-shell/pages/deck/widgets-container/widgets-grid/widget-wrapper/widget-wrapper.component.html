@@ -1,0 +1,119 @@
+<div [ngStyle]="widgetStyle" class="widget">
+  @if (!widget) {
+    <div (click)="createWidget.emit()"
+         [ngStyle]="widgetContentStyle"
+         [cdkContextMenuTriggerData]="{widgetIndex: index}"
+         [cdkContextMenuTriggerFor]="emptyWidgetContextMenu"
+         [attr.data-target]="index"
+         class="widget-content-wrapper empty-widget d-flex align-items-center justify-content-center"
+         placement="top"
+         ngbTooltip="Click to create a widget"
+         triggers="hover"
+         container="body"
+    >
+      <span class="mdi mdi-plus fs-1"></span>
+    </div>
+  } @else {
+    <app-widget-container
+      [ngStyle]="widgetContentStyle"
+      [cdkContextMenuTriggerData]="{widgetIndex: index}"
+      [cdkContextMenuTriggerFor]="existingWidgetContextMenu"
+      [attr.data-target]="index"
+      class="widget-content-wrapper"
+      cdkDragBoundary=".widgets-wrapper"
+      cdkDrag
+      [widgetData]="widget"
+    ></app-widget-container>
+  }
+</div>
+
+<ng-template #existingWidgetContextMenu let-widgetIndex="widgetIndex">
+  <div class="context-menu shadow" cdkMenu>
+    <button (click)="editWidget.emit()" class="context-menu-item" cdkMenuItem>
+      <span class="mdi mdi-cog pe-2"></span>Edit widget
+    </button>
+   <!-- <button class="context-menu-item"
+            cdkMenuItem
+            [cdkMenuTriggerData]="{widgetIndex}"
+            [cdkMenuTriggerFor]="resizeContextMenu">
+      <span class="mdi mdi-resize pe-2"></span>Size
+    </button>-->
+    <button (click)="modalService.open(deleteModal)" class="context-menu-item" cdkMenuItem>
+      <span class="mdi mdi-delete pe-2"></span>Delete widget
+    </button>
+  </div>
+</ng-template>
+<!--
+<ng-template #resizeContextMenu let-widgetIndex="widgetIndex">
+  <div class="context-menu shadow" cdkMenu>
+    <button class="context-menu-item"
+            cdkMenuItem
+            [cdkMenuTriggerData]="{widgetIndex}"
+            [cdkMenuTriggerFor]="resizeWidthContextMenu">
+      <span class="mdi mdi-table-column-width pe-2"></span>Width
+    </button>
+    <button class="context-menu-item"
+            cdkMenuItem
+            [cdkMenuTriggerData]="{widgetIndex}"
+            [cdkMenuTriggerFor]="resizeHeightContextMenu">
+      <span class="mdi mdi-table-row-height pe-2"></span>Height
+    </button>
+  </div>
+</ng-template>
+
+<ng-template #resizeWidthContextMenu let-widgetIndex="widgetIndex">
+  <div class="context-menu shadow" cdkMenu>
+    <button [disabled]="getWidgetFromIndex(widgetIndex)?.canIncreaseColSpan === false"
+            class="context-menu-item"
+            cdkMenuItem
+            (click)="increaseColSpan(widgetIndex)">
+      +1
+    </button>
+
+    <button [disabled]="getWidgetFromIndex(widgetIndex)?.canDecreaseColSpan === false"
+            class="context-menu-item"
+            cdkMenuItem
+            (click)="decreaseColSpan(widgetIndex)">
+      -1
+    </button>
+  </div>
+</ng-template>
+
+<ng-template #resizeHeightContextMenu let-widgetIndex="widgetIndex">
+  <div class="context-menu shadow" cdkMenu>
+    <button [disabled]="getWidgetFromIndex(widgetIndex)?.canIncreaseRowSpan === false"
+            class="context-menu-item"
+            cdkMenuItem
+            (click)="increaseRowSpan(widgetIndex)">
+      +1
+    </button>
+
+    <button [disabled]="getWidgetFromIndex(widgetIndex)?.canDecreaseRowSpan === false"
+            class="context-menu-item"
+            cdkMenuItem
+            (click)="decreaseRowSpan(widgetIndex)">
+      -1
+    </button>
+  </div>
+</ng-template>
+-->
+
+<ng-template #emptyWidgetContextMenu let-widgetIndex="widgetIndex">
+  <div class="context-menu shadow" cdkMenu>
+    <button (click)="createWidget.emit()" class="context-menu-item" cdkMenuItem>
+      <span class="mdi mdi-plus pe-2"></span>Create widget
+    </button>
+  </div>
+</ng-template>
+
+<ng-template #deleteModal let-close="close" let-dismiss="dismiss">
+  <app-base-confirmation-modal title="Delete widget"
+                          [confirmValue]="close"
+                          [dismissValue]="dismiss"
+                          confirmButtonRole="danger"
+                          confirmButtonText="Delete"
+                          (confirm)="deleteWidget.emit()"
+  >
+    <p>Action will delete the widget!</p>
+  </app-base-confirmation-modal>
+</ng-template>

@@ -1,0 +1,14 @@
+<div class="d-flex flex-column h-100 w-100 bg-dark-subtle card card-body">
+  <div class="d-flex justify-content-between align-items-center">
+    <span class="fw-lighter fs-5 py-1">Test</span>
+    <div>
+      <button class="btn px-3" [cdkMenuTriggerFor]="menu"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+    </div>
+  </div>
+  <hr class="mt-1">
+  <app-widgets-grid class="h-100 w-100"></app-widgets-grid>
+</div>
+
+<ng-template #menu>
+  <app-folder-settings-context-menu [currentFolder]="currentFolder"></app-folder-settings-context-menu>
+</ng-template>

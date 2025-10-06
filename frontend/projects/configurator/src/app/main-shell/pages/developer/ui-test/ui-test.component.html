@@ -1,0 +1,39 @@
+<div class="ui-test-container h-100 d-flex gap-3">
+  @if (isLoading) {
+    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-dark">
+      <div class="text-center text-white">
+        <div class="spinner-border text-primary mb-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading registered views...</p>
+      </div>
+    </div>
+  } @else if (errorMessage) {
+    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-dark">
+      <div class="text-center text-danger">
+        <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
+        <p class="mt-3">{{ errorMessage }}</p>
+        <button class="btn btn-primary" (click)="ngOnInit()">
+          <i class="bi bi-arrow-clockwise me-1"></i>
+          Retry
+        </button>
+      </div>
+    </div>
+  } @else {
+    <!-- Sidebar -->
+    <div class="sidebar-container" style="width: 300px; min-width: 300px;">
+      <app-view-sidebar
+        [views]="views"
+        [selectedViewId]="selectedViewId"
+        (viewSelected)="onViewSelected($event)">
+      </app-view-sidebar>
+    </div>
+
+    <!-- Content -->
+    <div class="content-container flex-grow-1">
+      <app-view-content
+        [selectedViewId]="selectedViewId">
+      </app-view-content>
+    </div>
+  }
+</div>

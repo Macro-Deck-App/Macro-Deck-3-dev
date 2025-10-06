@@ -1,0 +1,9 @@
+<div class="min-vh-100 d-flex flex-column">
+  <app-navbar (sidebarToggle)="toggleSidebar()" [sidebarOpen]="sidebarOpen"></app-navbar>
+  <div class="d-flex flex-row flex-grow-1">
+    <app-sidebar [open]="sidebarOpen" class="h-auto"></app-sidebar>
+    <div class="p-3 w-100 h-auto">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

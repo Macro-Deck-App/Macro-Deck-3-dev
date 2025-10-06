@@ -1,0 +1,188 @@
+@use '@angular/material' as mat;
+@import 'custom-theme';
+@import 'ngx-toastr/toastr';
+@import 'ngx-toastr/toastr-bs5-alert';
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    typography: Roboto,
+    density: 0,
+  ));
+}:root {
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.text-small {
+  font-size: 9pt;
+}
+
+.cursor-pointer {
+  cursor: pointer!important;
+}
+
+.container-sidebar {
+  width: 260px;
+}
+
+.transition-all {
+  transition: all 0.3s;
+}
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.tree-invisible {
+  display: none;
+}
+
+.mat-tree-node {
+  user-select: none;
+
+  &.cdk-drag-preview { // while dragging
+    @include mat.elevation(12);
+  }
+  &.cdk-drag-placeholder { // potential drop area
+    opacity: 0;
+  }
+}
+
+/* items moving away to make room for drop */
+.cdk-drop-list-dragging .mat-tree-node:not(.cdk-drag-placeholder) {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+/* item being dropped */
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.mat-tree-node,
+mat-tree-node,
+mat-nested-tree-node {
+  font-size: 10pt;
+  color: $light-text-emphasis-dark!important;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  border-radius: $border-radius;
+}
+
+.mat-tree-node {
+  min-height: 1.6rem!important;
+  height: 1.6rem!important;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.mat-tree-node:hover {
+  color: $text-muted!important;
+}
+
+.active {
+  background-color: $primary !important;
+}
+
+mat-tree {
+  background-color: inherit!important;
+}
+
+.context-menu {
+  padding: .4em;
+  background: $body-tertiary-bg-dark;
+  display: flex;
+  flex-direction: column;
+  min-width: 10em;
+  border: 1px solid var(--extra-dark-accent-color);
+  gap: .2em;
+  border-radius: $border-radius;
+}
+
+.context-menu > .context-menu-item {
+  border-radius: $border-radius;
+  font-size: 11pt;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  background: inherit;
+  text-align: left;
+  padding: .2em 2em .2em .6em;
+}
+
+.context-menu > .context-menu-item:hover{
+  background-color: $primary !important;
+}
+
+/* Animate items as they're being sorted. */
+.cdk-drop-list-dragging .cdk-drag {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Animate an item that has been dropped. */
+.cdk-drag-animating {
+  transition: transform 300ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.widget {
+  display: flex;
+  overflow: visible;
+  touch-action: none;
+}
+
+.widget:hover {
+  z-index: 100;
+}
+
+.widget-content-wrapper {
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: $border-radius;
+  border: 1px solid transparentize($border-color-dark, 0.7);
+  transition: border .3s ease;
+}
+
+.widget-content-wrapper:hover {
+  border-color: $border-color-dark;
+}
+
+.widget-content {
+  cursor: pointer;
+  height: 100%;
+  width: 100%;
+  display: block;
+}
+
+.empty-widget {
+}
+
+.empty-widget span {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.empty-widget:hover span {
+  opacity: 1;
+}

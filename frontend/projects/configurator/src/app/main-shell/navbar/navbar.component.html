@@ -1,0 +1,15 @@
+<nav class="fixed top-0 z-50 w-100 bg-body-tertiary">
+  <div class="d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3 px-1 py-2">
+      <app-navbar-sidebar-toggle [open]="sidebarOpen" (toggle)="sidebarToggle.emit()"></app-navbar-sidebar-toggle>
+      <app-navbar-logo></app-navbar-logo>
+    </div>
+    <!--<div class="mx-3 py-2">
+      <button class="btn btn-outline-light btn-lg"
+              placement="bottom"
+              ngbTooltip="Quick Setup"
+              triggers="hover"
+      ><i class="fa-solid fa-qrcode"></i></button>
+    </div>-->
+  </div>
+</nav>

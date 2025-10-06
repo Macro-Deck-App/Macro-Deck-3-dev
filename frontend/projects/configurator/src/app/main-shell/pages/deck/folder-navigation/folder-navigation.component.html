@@ -1,0 +1,76 @@
+<div class="d-flex folder-navigation h-100 bg-dark-subtle card card-body">
+  <div class="d-flex justify-content-between align-items-center">
+    <span class="fw-lighter fs-5 py-1">Folders</span>
+    <div>
+      <button class="btn" [cdkMenuTriggerFor]="createFolderMenu"><i class="fa-solid fa-folder-plus"></i></button>
+    </div>
+  </div>
+  <hr class="mt-1">
+  <div class="h-100 overflow-x-auto w-100">
+    <mat-tree #tree
+              [dataSource]="dataSource"
+              [childrenAccessor]="childrenAccessor"
+    >
+      <mat-tree-node *matTreeNodeDef="let node"
+                     [class.active]="selectedFolder?.id === node.id"
+                     (click)="onNodeClick(node)"
+                     [cdkTreeNodeTypeaheadLabel]="node.displayName"
+                     (contextmenu)="onNodeClick(node);"
+                     [cdkContextMenuTriggerData]="{node}"
+                     [cdkContextMenuTriggerFor]="context_menu"
+                     (expandedChange)="expandedChange()"
+                     matTreeNodePadding
+                     matTreeNodePaddingIndent="20"
+      >
+        @if (hasChild(node)) {
+          <span class="mdi ps-1 fs-5"
+                [class.mdi-chevron-down]="tree.isExpanded(node)"
+                [class.mdi-chevron-right]="!tree.isExpanded(node)"
+                cdkTreeNodeToggle
+          ></span>
+        }
+        <span class="text-small text-nowrap" [class.ps-4]="!hasChild(node)" >{{ node.displayName }}</span>
+      </mat-tree-node>
+    </mat-tree>
+  </div>
+
+  <ng-template #context_menu let-node="node">
+    <div class="context-menu shadow" cdkMenu>
+      <button (click)="createFolderInSelected()" class="context-menu-item" cdkMenuItem>
+        <span class="mdi mdi-plus pe-2"></span>Create new folder
+      </button>
+      <button (click)="editFolder()" class="context-menu-item" cdkMenuItem>
+        <span class="mdi mdi-cog pe-2"></span>Edit "{{ node.displayName }}"
+      </button>
+      <button (click)="modal.open(deleteModal, 'lg')" class="context-menu-item" cdkMenuItem>
+        <span class="mdi mdi-delete pe-2"></span>Delete "{{ node.displayName }}"
+      </button>
+    </div>
+  </ng-template>
+
+</div>
+
+<ng-template #createFolderMenu>
+  <div class="context-menu shadow" cdkMenu>
+    <button (click)="createFolderInRoot()" class="context-menu-item" cdkMenuItem>
+      Create in root
+    </button>
+    @if (selectedFolder) {
+      <button (click)="createFolderInSelected()" class="context-menu-item" cdkMenuItem>
+        Create in selected folder
+      </button>
+    }
+  </div>
+</ng-template>
+
+<ng-template #deleteModal let-close="close" let-dismiss="dismiss">
+  <app-base-confirmation-modal title="Delete folder"
+                          [confirmValue]="close"
+                          [dismissValue]="dismiss"
+                          confirmButtonRole="danger"
+                          confirmButtonText="Delete"
+                          (confirm)="selectedFolder ? deleteFolder(selectedFolder) : null"
+  >
+    <p>This will delete the folder <strong>{{ selectedFolder?.displayName }}</strong> and all it's configured widgets!</p>
+  </app-base-confirmation-modal>
+</ng-template>

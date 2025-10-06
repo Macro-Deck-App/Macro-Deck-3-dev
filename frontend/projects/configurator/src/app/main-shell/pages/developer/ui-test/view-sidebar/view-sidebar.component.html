@@ -1,0 +1,27 @@
+<div class="view-sidebar h-100 bg-dark">
+  <div class="p-3">
+    <h5 class="text-white mb-0">Registered Views</h5>
+    <small class="text-muted">{{ views.length }} view(s)</small>
+  </div>
+
+  <div class="list-group list-group-flush">
+    @for (view of views; track view.viewId) {
+      <button
+        type="button"
+        class="list-group-item list-group-item-action bg-dark text-white border-secondary d-flex flex-column align-items-start"
+        [class.active]="view.viewId === selectedViewId"
+        (click)="onViewClick(view.viewId)">
+        <div class="fw-semibold">{{ getViewName(view.viewId) }}</div>
+        <small class="text-muted">{{ getViewNamespace(view.viewId) }}</small>
+        @if (view.pluginId) {
+          <span class="badge bg-info mt-1">Plugin: {{ view.pluginId }}</span>
+        }
+      </button>
+    } @empty {
+      <div class="p-3 text-center text-muted">
+        <i class="bi bi-inbox"></i>
+        <p class="mb-0 mt-2">No views registered</p>
+      </div>
+    }
+  </div>
+</div>

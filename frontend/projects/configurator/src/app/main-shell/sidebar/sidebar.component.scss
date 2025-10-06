@@ -1,0 +1,18 @@
+@import 'bootstrap/scss/bootstrap';
+
+.sidebar {
+  position: relative;
+}
+
+.sidebar::before {
+  content: "";
+  position: absolute;
+  background-color: transparent;
+  top: 0;
+  height: 50px;
+  right: -.7rem;
+  width: .7rem;
+  border-top-left-radius: .7rem;
+  box-shadow: 0 -.7rem 0 0 $body-tertiary-bg-dark;
+  z-index: -1;
+}

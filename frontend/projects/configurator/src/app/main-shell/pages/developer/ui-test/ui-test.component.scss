@@ -1,0 +1,9 @@
+.ui-test-container {
+  overflow: hidden;
+  
+  .sidebar-container,
+  .content-container {
+    height: 100%;
+    overflow: hidden;
+  }
+}
