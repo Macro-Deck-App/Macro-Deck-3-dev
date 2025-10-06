@@ -1,6 +1,8 @@
 ﻿using ExamplePlugin.Actions;
 using ExamplePlugin.Services;
+using ExamplePlugin.UI;
 using MacroDeck.SDK.PluginSDK;
+using MacroDeck.SDK.PluginSDK.Extensions.UI;
 using MacroDeck.SDK.PluginSDK.Options;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,6 +30,12 @@ public static class Program
 			.RegisterActions(actions =>
 			{
 				actions.Add<MyCustomAction>();
+			})
+			.RegisterViews(views =>
+			{
+				// Register views - ViewId comes from [MdUiView] attribute
+				views.Add<ExampleConfigView>();
+				views.Add<SimpleView>();
 			})
 			.Build()
 			.Run(args);

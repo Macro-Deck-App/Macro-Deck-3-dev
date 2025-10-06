@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\MacroDeck.SDK.PluginSDK\MacroDeck.SDK.PluginSDK.csproj"/>
+        <ProjectReference Include="..\..\src\MacroDeck.SDK.UI\MacroDeck.SDK.UI.csproj"/>
     </ItemGroup>
 
 </Project>

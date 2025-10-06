@@ -2,11 +2,13 @@ using System.Text.Json.Serialization;
 using MacroDeck.Server.Application;
 using MacroDeck.Server.Application.Extensions;
 using MacroDeck.Server.Application.Plugins.Services;
+using MacroDeck.Server.Extensions;
 using MacroDeck.Server.Hubs;
 using MacroDeck.Server.Infrastructure;
 using MacroDeck.Server.Mappings;
 using MacroDeck.Server.Middlewares;
 using MacroDeck.Server.Services;
+using MacroDeck.Server.UI.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
@@ -75,6 +77,8 @@ public class Startup
 		services.AddSingleton<IPluginActionInvoker, PluginActionInvoker>();
 		services.AddSingleton<IPluginCommunicationService, PluginCommunicationService>();
 
+		// Register UI Framework services
+		services.AddMacroDeckUi();
 
 		services.AddDataProtection()
 			.PersistKeysToFileSystem(new DirectoryInfo("keys"))
@@ -95,6 +99,7 @@ public class Startup
 			endpoints.MapControllers();
 			endpoints.MapHub<SystemNotificationHub>("/api/hubs/system-notifications");
 			endpoints.MapHub<PluginCommunicationHub>("/api/hubs/plugin-communication");
+			endpoints.MapHub<MdUiHub>("/api/hubs/ui");
 		});
 		app.UseSwagger();
 		app.UseSwaggerUI();

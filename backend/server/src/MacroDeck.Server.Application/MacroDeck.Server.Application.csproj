@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\sdk\src\MacroDeck.SDK.PluginSDK\MacroDeck.SDK.PluginSDK.csproj"/>
+        <ProjectReference Include="..\..\..\sdk\src\MacroDeck.SDK.UI\MacroDeck.SDK.UI.csproj"/>
         <ProjectReference Include="..\MacroDeck.Server.Domain\MacroDeck.Server.Domain.csproj"/>
     </ItemGroup>
 </Project>
