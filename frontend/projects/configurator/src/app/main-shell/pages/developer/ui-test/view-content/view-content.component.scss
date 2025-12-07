@@ -1,0 +1,12 @@
+.view-content {
+  overflow: hidden; // Prevent content from expanding parent
+  
+  .view-container {
+    border: 2px solid #dc3545; // Red border around view
+  }
+  
+  md-ui-view {
+    display: block;
+    max-width: 100%;
+  }
+}

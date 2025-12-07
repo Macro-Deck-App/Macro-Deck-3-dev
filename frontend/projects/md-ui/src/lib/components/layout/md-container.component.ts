@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ViewChild, ViewContainerRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EdgeInsets } from '../../models';
 
@@ -14,23 +14,34 @@ import { EdgeInsets } from '../../models';
       [style.border-radius]="borderRadiusStyle"
       [style.border]="borderStyle"
       [style.margin]="marginStyle"
-      [style.padding]="paddingStyle">
-      <ng-content></ng-content>
+      [style.padding]="paddingStyle"
+      [style.display]="alignment ? 'flex' : undefined"
+      [style.justify-content]="getJustifyContent()"
+      [style.align-items]="getAlignItems()">
+      <ng-container #childContainer></ng-container>
     </div>
   `,
   standalone: true,
   imports: [CommonModule]
 })
-export class MdContainerComponent {
+export class MdContainerComponent implements AfterViewInit {
   @Input() backgroundColor?: string;
   @Input() width?: number;
   @Input() height?: number;
   @Input() borderRadius?: any;
   @Input() border?: any;
+  @Input() alignment?: string;
   @Input() margin?: EdgeInsets;
   @Input() padding?: EdgeInsets;
   @Input() customCss?: string;
   @Input() customClasses?: string;
+
+  @ViewChild('childContainer', { read: ViewContainerRef, static: false })
+  childContainer!: ViewContainerRef;
+
+  ngAfterViewInit() {
+    // ViewChild is now available
+  }
 
   get marginStyle(): string | undefined {
     if (!this.margin) return undefined;
@@ -53,5 +64,47 @@ export class MdContainerComponent {
   get borderStyle(): string | undefined {
     if (!this.border) return undefined;
     return `${this.border.width}px ${this.border.style || 'solid'} ${this.border.color}`;
+  }
+
+  getJustifyContent(): string | undefined {
+    if (!this.alignment) return undefined;
+    
+    switch (this.alignment.toLowerCase()) {
+      case 'topleft':
+      case 'centerleft':
+      case 'bottomleft':
+        return 'flex-start';
+      case 'topcenter':
+      case 'center':
+      case 'bottomcenter':
+        return 'center';
+      case 'topright':
+      case 'centerright':
+      case 'bottomright':
+        return 'flex-end';
+      default:
+        return undefined;
+    }
+  }
+
+  getAlignItems(): string | undefined {
+    if (!this.alignment) return undefined;
+    
+    switch (this.alignment.toLowerCase()) {
+      case 'topleft':
+      case 'topcenter':
+      case 'topright':
+        return 'flex-start';
+      case 'centerleft':
+      case 'center':
+      case 'centerright':
+        return 'center';
+      case 'bottomleft':
+      case 'bottomcenter':
+      case 'bottomright':
+        return 'flex-end';
+      default:
+        return undefined;
+    }
   }
 }

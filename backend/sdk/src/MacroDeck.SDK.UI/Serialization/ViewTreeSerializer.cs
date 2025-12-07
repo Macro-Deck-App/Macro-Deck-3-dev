@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using MacroDeck.SDK.UI.Components.Layout;
 using MacroDeck.SDK.UI.Core;
 
 namespace MacroDeck.SDK.UI.Serialization;
@@ -13,6 +14,7 @@ public class ViewTreeSerializer
 	private readonly Dictionary<string, string> _pathToIdMap = new(); // Maps stable path -> stable ID
 	private readonly ConditionalWeakTable<MdUiView, string> _viewIdCache = new();
 	private readonly Dictionary<string, MdUiView> _viewMap = new();
+	private string? _lastRootTypeHash;
 
 	/// <summary>
 	///     Serializes a view into a ViewTreeNode
@@ -20,8 +22,129 @@ public class ViewTreeSerializer
 	public ViewTreeNode Serialize(MdUiView view)
 	{
 		_viewMap.Clear(); // Clear map for each serialization
-		// Note: We keep _viewIdCache and _pathToIdMap to maintain stable IDs across rebuilds
+
+		// Detect major structural changes by checking if the root view type changed
+		// This helps identify navigation between different pages/views
+		var currentRootTypeHash = ComputeRootHash(view);
+		if (_lastRootTypeHash != null && _lastRootTypeHash != currentRootTypeHash)
+		{
+			// Root structure changed significantly - invalidate cache
+			_pathToIdMap.Clear();
+		}
+
+		_lastRootTypeHash = currentRootTypeHash;
+
+		// Note: We keep _viewIdCache for root/stateful views to maintain their identity
 		return SerializeInternal(view, "root");
+	}
+
+	/// <summary>
+	///     Computes a hash representing the root structure of the view tree.
+	///     Used to detect when major structural changes occur.
+	/// </summary>
+	private string ComputeRootHash(MdUiView view)
+	{
+		// Build the root view to get its actual structure
+		var builtView = view;
+		if (view is StatefulMdUiView stateful)
+		{
+			stateful.EnsureState();
+			builtView = stateful.Build();
+		}
+		else if (view is StatelessMdUiView stateless)
+		{
+			builtView = stateless.Build();
+		}
+
+		// Compute a deeper structural hash
+		return ComputeStructuralHash(builtView, 0, 4);
+	}
+
+	/// <summary>
+	///     Recursively computes a structural hash of the view tree.
+	///     Only considers types and counts, not values.
+	/// </summary>
+	private string ComputeStructuralHash(MdUiView view, int depth, int maxDepth)
+	{
+		if (depth >= maxDepth)
+		{
+			return view.GetType().Name;
+		}
+
+		// Build stateful/stateless views to get actual structure
+		var actualView = view;
+		if (view is StatefulMdUiView stateful)
+		{
+			stateful.EnsureState();
+			var built = stateful.Build();
+			if (built != view)
+			{
+				actualView = built;
+			}
+		}
+		else if (view is StatelessMdUiView stateless)
+		{
+			var built = stateless.Build();
+			if (built != view)
+			{
+				actualView = built;
+			}
+		}
+
+		var hash = actualView.GetType().Name;
+		var children = GetImmediateChildren(actualView).ToList();
+
+		// Include child count in hash (helps detect when children are added/removed)
+		hash += $"[{children.Count}]";
+
+		// Add hashes of children
+		foreach (var child in children.Take(15)) // Increased from 10 to 15 for better detection
+		{
+			hash += ">" + ComputeStructuralHash(child, depth + 1, maxDepth);
+		}
+
+		return hash;
+	}
+
+	/// <summary>
+	///     Gets immediate children of a view without building them.
+	/// </summary>
+	private IEnumerable<MdUiView> GetImmediateChildren(MdUiView view)
+	{
+		var type = view.GetType();
+		var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+		foreach (var prop in properties)
+		{
+			if (prop.PropertyType == typeof(MdUiView) || prop.PropertyType.IsSubclassOf(typeof(MdUiView)))
+			{
+				var child = prop.GetValue(view) as MdUiView;
+				if (child != null)
+				{
+					yield return child;
+				}
+			}
+			else if (typeof(IEnumerable<MdUiView>).IsAssignableFrom(prop.PropertyType))
+			{
+				if (prop.GetValue(view) is IEnumerable<MdUiView> children)
+				{
+					foreach (var child in children)
+					{
+						yield return child;
+					}
+				}
+			}
+		}
+	}
+
+	/// <summary>
+	///     Invalidates the path cache, causing new IDs to be generated for changed structures.
+	///     Call this when you know the view structure has fundamentally changed (e.g., navigation to different page).
+	/// </summary>
+	public void InvalidateCache()
+	{
+		_pathToIdMap.Clear();
+		_lastRootTypeHash = null;
 	}
 
 	private ViewTreeNode SerializeInternal(MdUiView view, string path)
@@ -234,6 +357,23 @@ public class ViewTreeSerializer
 				case IState state:
 					value = state.GetValue();
 					continue;
+				// Handle BorderRadius
+				case BorderRadius borderRadius:
+					return new
+					{
+						topLeft = borderRadius.TopLeft,
+						topRight = borderRadius.TopRight,
+						bottomRight = borderRadius.BottomRight,
+						bottomLeft = borderRadius.BottomLeft
+					};
+				// Handle Border
+				case Border border:
+					return new
+					{
+						width = border.Width,
+						color = border.Color,
+						style = border.Style.ToString().ToLowerInvariant()
+					};
 				// Handle collections of views (but don't serialize them as values)
 				case IEnumerable<MdUiView>:
 				// Handle MdUiView (single child)

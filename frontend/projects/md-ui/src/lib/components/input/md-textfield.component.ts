@@ -14,19 +14,50 @@ import { EdgeInsets } from '../../models';
       @if (label) {
         <label class="form-label">{{ label }}</label>
       }
-      <input 
-        #inputElement
-        class="form-control"
-        [type]="type || 'text'"
-        [value]="localValue"
-        (input)="onInput($event)"
-        [placeholder]="placeholder || ''"
-        [disabled]="disabled"
-        [attr.maxlength]="maxLength"
-        (blur)="onBlur()"
-        (keydown.enter)="onEnter($event)" />
+      <div class="input-group">
+        <input 
+          #inputElement
+          class="form-control"
+          [type]="currentInputType"
+          [value]="localValue"
+          (input)="onInput($event)"
+          [placeholder]="placeholder || ''"
+          [disabled]="disabled"
+          [attr.maxlength]="maxLength"
+          (blur)="onBlur()"
+          (keydown.enter)="onEnter($event)" />
+        @if (sensitive) {
+          <button 
+            class="btn btn-outline-secondary password-toggle" 
+            type="button"
+            (click)="togglePasswordVisibility()"
+            [disabled]="disabled"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
+            <i [class]="showPassword ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+          </button>
+        }
+      </div>
     </div>
   `,
+  styles: [`
+    .input-group {
+      position: relative;
+    }
+    .password-toggle {
+      border-left: 0;
+      padding: 0.375rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+    }
+    .input-group input {
+      border-right: 0;
+    }
+    .input-group input:focus + .btn {
+      border-color: #86b7fe;
+    }
+  `],
   standalone: true,
   imports: [CommonModule, FormsModule]
 })
@@ -37,6 +68,7 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
   @Input() type?: string;
   @Input() disabled: boolean = false;
   @Input() maxLength?: number;
+  @Input() sensitive: boolean = false;
   @Input() margin?: EdgeInsets;
   @Input() padding?: EdgeInsets;
   @Input() customCss?: string;
@@ -46,6 +78,7 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
   @ViewChild('inputElement', { read: ElementRef }) inputElement?: ElementRef<HTMLInputElement>;
 
   localValue: string = '';
+  showPassword: boolean = false;
   private isUserTyping: boolean = false;
   private typingTimeout?: any;
 
@@ -60,6 +93,24 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
     if (this.typingTimeout) {
       clearTimeout(this.typingTimeout);
     }
+  }
+
+  get currentInputType(): string {
+    if (this.sensitive && !this.showPassword) {
+      return 'password';
+    }
+    return this.type || 'text';
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+    
+    // Restore focus after toggle
+    setTimeout(() => {
+      if (this.inputElement?.nativeElement) {
+        this.inputElement.nativeElement.focus();
+      }
+    }, 0);
   }
 
   ngOnChanges(changes: SimpleChanges): void {

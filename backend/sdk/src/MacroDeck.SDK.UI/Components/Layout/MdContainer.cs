@@ -13,6 +13,7 @@ public class MdContainer : StatelessMdUiView
     public double? Height { get; set; }
     public BorderRadius? BorderRadius { get; set; }
     public Border? Border { get; set; }
+    public Alignment? Alignment { get; set; }
     
     public MdContainer(MdUiView? child = null)
     {
@@ -23,6 +24,19 @@ public class MdContainer : StatelessMdUiView
     {
         return this;
     }
+}
+
+public enum Alignment
+{
+    TopLeft,
+    TopCenter,
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight
 }
 
 public record BorderRadius(double TopLeft, double TopRight, double BottomRight, double BottomLeft)

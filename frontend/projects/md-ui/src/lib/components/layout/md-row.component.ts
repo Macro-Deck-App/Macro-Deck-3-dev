@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ViewChild, ViewContainerRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EdgeInsets } from '../../models';
 
@@ -15,13 +15,13 @@ import { EdgeInsets } from '../../models';
       [style.gap.px]="spacing"
       [style.margin]="marginStyle"
       [style.padding]="paddingStyle">
-      <ng-content></ng-content>
+      <ng-container #childContainer></ng-container>
     </div>
   `,
   standalone: true,
   imports: [CommonModule]
 })
-export class MdRowComponent {
+export class MdRowComponent implements AfterViewInit {
   @Input() mainAxisAlignment?: string;
   @Input() crossAxisAlignment?: string;
   @Input() spacing?: number;
@@ -29,6 +29,13 @@ export class MdRowComponent {
   @Input() padding?: EdgeInsets;
   @Input() customCss?: string;
   @Input() customClasses?: string;
+
+  @ViewChild('childContainer', { read: ViewContainerRef, static: false })
+  childContainer!: ViewContainerRef;
+
+  ngAfterViewInit() {
+    // ViewChild is now available
+  }
 
   get marginStyle(): string | undefined {
     if (!this.margin) return undefined;

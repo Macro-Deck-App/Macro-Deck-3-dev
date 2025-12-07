@@ -33,8 +33,9 @@ import { Subscription } from 'rxjs';
   `,
   styles: [`
     .md-ui-root {
+      display: block;
       width: 100%;
-      height: 100%;
+      /* Removed height: 100% to allow content to determine height and enable scrolling */
     }
   `],
   standalone: true,
@@ -103,8 +104,21 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
       this.createNode(this.viewTree, this.container, null);
       this.previousViewTree = this.deepClone(this.viewTree);
     } else {
-      // Incremental update - diff and patch
-      this.diffAndPatch(this.viewTree, this.previousViewTree, this.container, null);
+      // Check if root structure changed dramatically
+      const rootChanged = this.viewTree.nodeId !== this.previousViewTree.nodeId ||
+                         this.viewTree.componentType !== this.previousViewTree.componentType;
+
+      if (rootChanged) {
+        // Complete rebuild
+        this.destroyNodeRecursive(this.previousViewTree);
+        this.container.clear();
+        this.componentRefMap.clear();
+        this.createNode(this.viewTree, this.container, null);
+      } else {
+        // Incremental update - diff and patch
+        this.diffAndPatch(this.viewTree, this.previousViewTree, this.container, null);
+      }
+      
       this.previousViewTree = this.deepClone(this.viewTree);
       this.cdr.detectChanges();
     }
@@ -242,26 +256,51 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
     const newChildren = newNode.children || [];
     const oldChildren = oldNode.children || [];
 
-    // Build maps for quick lookup
-    const oldChildMap = new Map<string, ViewTreeNode>();
-    oldChildren.forEach(child => oldChildMap.set(child.nodeId, child));
-
-    const newChildIds = new Set(newChildren.map(c => c.nodeId));
+    // If children structure changed significantly, clear and rebuild
+    const childrenChanged = newChildren.length !== oldChildren.length || 
+                           !this.childrenOrderMatches(newChildren, oldChildren);
 
     const childContainer = this.getChildContainer(componentRef);
 
-    // Remove children that no longer exist
-    oldChildren.forEach(oldChild => {
-      if (!newChildIds.has(oldChild.nodeId)) {
+    if (childrenChanged) {
+      // Clear the container and destroy all old children
+      oldChildren.forEach(oldChild => {
         this.destroyNodeRecursive(oldChild);
-      }
-    });
+      });
+      childContainer.clear();
 
-    // Process each new child
-    newChildren.forEach((newChild) => {
-      const oldChild = oldChildMap.get(newChild.nodeId);
-      this.diffAndPatch(newChild, oldChild || null, childContainer, newNode.nodeId);
-    });
+      // Create all new children
+      newChildren.forEach(newChild => {
+        this.createNode(newChild, childContainer, newNode.nodeId);
+      });
+    } else {
+      // Incremental update - children have same IDs and order
+      const oldChildMap = new Map<string, ViewTreeNode>();
+      oldChildren.forEach(child => oldChildMap.set(child.nodeId, child));
+
+      const newChildIds = new Set(newChildren.map(c => c.nodeId));
+
+      // Remove children that no longer exist
+      oldChildren.forEach(oldChild => {
+        if (!newChildIds.has(oldChild.nodeId)) {
+          this.destroyNodeRecursive(oldChild);
+        }
+      });
+
+      // Process each new child
+      newChildren.forEach((newChild) => {
+        const oldChild = oldChildMap.get(newChild.nodeId);
+        this.diffAndPatch(newChild, oldChild || null, childContainer, newNode.nodeId);
+      });
+    }
+  }
+
+  private childrenOrderMatches(newChildren: ViewTreeNode[], oldChildren: ViewTreeNode[]): boolean {
+    if (newChildren.length !== oldChildren.length) return false;
+    for (let i = 0; i < newChildren.length; i++) {
+      if (newChildren[i].nodeId !== oldChildren[i].nodeId) return false;
+    }
+    return true;
   }
 
   private destroyNodeRecursive(node: ViewTreeNode): void {
@@ -299,6 +338,12 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private getChildContainer(componentRef: ComponentRef<any>): ViewContainerRef {
+    // Check if component has a childContainer (for layout components)
+    if (componentRef.instance.childContainer) {
+      return componentRef.instance.childContainer;
+    }
+    
+    // Fallback to default ViewContainerRef
     return componentRef.injector.get(ViewContainerRef);
   }
 
