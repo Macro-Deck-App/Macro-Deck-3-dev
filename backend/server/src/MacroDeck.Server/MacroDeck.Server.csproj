@@ -16,6 +16,7 @@
         <ProjectReference Include="..\MacroDeck.Server.Application\MacroDeck.Server.Application.csproj"/>
         <ProjectReference Include="..\MacroDeck.Server.Infrastructure\MacroDeck.Server.Infrastructure.csproj"/>
         <ProjectReference Include="..\..\..\sdk\src\MacroDeck.SDK.UI\MacroDeck.SDK.UI.csproj"/>
+        <ProjectReference Include="..\MacroDeck.Server.Integrations\MacroDeck.Server.Integrations.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

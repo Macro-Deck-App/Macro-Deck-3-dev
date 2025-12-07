@@ -6,7 +6,7 @@ using Serilog;
 namespace MacroDeck.SDK.PluginSDK.Extensions;
 
 /// <summary>
-/// Base class for internal MacroDeck extensions (integrations)
+///     Base class for internal MacroDeck extensions (integrations)
 /// </summary>
 public abstract class InternalExtension : IMacroDeckExtension
 {
@@ -31,7 +31,12 @@ public abstract class InternalExtension : IMacroDeckExtension
 
 	public ExtensionType ExtensionType => ExtensionType.Internal;
 
-	public virtual List<MacroDeckAction> GetActions() => new();
+	public virtual Type? IntegrationConfigurationView { get; }
+
+	public virtual List<MacroDeckAction> GetActions()
+	{
+		return new List<MacroDeckAction>();
+	}
 
 	public abstract Task Start(CancellationToken cancellationToken = default);
 

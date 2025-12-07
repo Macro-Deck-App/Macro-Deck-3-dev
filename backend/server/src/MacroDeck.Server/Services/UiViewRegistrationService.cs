@@ -1,10 +1,11 @@
 using MacroDeck.SDK.UI.Registry;
 using MacroDeck.Server.Application.UI.Services;
-using MacroDeck.Server.UI.Views;
+using MacroDeck.Server.Integrations.Spotify.Views.Plugin;
+using MacroDeck.Server.Views;
 using Serilog;
 using ILogger = Serilog.ILogger;
 
-namespace MacroDeck.Server.UI.Services;
+namespace MacroDeck.Server.Services;
 
 /// <summary>
 ///     Background service that registers UI views on startup
@@ -34,7 +35,7 @@ public class UiViewRegistrationService : IHostedService
 		{
 			// Initialize the state manager with the update service
 			_stateManager.SetUpdateService(_updateService);
-			
+
 			// Register server views
 			RegisterServerViews();
 
@@ -65,17 +66,12 @@ public class UiViewRegistrationService : IHostedService
 			Namespace = "server",
 			TransportMode = TransportMode.Direct
 		});
-
-		_logger.Debug("Registered view: server.TestCounterView");
-
-		// TODO: Add more server views here as they are created
-		// Example:
-		// _registry.RegisterView(new MdUiViewMetadata
-		// {
-		//     ViewId = "server.SettingsView",
-		//     ViewType = typeof(SettingsView),
-		//     Namespace = "server",
-		//     TransportMode = TransportMode.Direct
-		// });
+		_registry.RegisterView(new MdUiViewMetadata
+		{
+			ViewId = "spotify.IntegrationConfigurationView",
+			ViewType = typeof(SpotifyIntegrationConfigurationView),
+			Namespace = "spotify",
+			TransportMode = TransportMode.Direct
+		});
 	}
 }

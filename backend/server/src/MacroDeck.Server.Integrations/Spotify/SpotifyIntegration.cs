@@ -3,9 +3,10 @@ using MacroDeck.SDK.PluginSDK.Actions;
 using MacroDeck.SDK.PluginSDK.Extensions;
 using MacroDeck.SDK.PluginSDK.Integration.Music;
 using MacroDeck.SDK.PluginSDK.MusicPlayers;
-using MacroDeck.Server.Application.Integrations.Internal.Spotify.DataTypes;
+using MacroDeck.Server.Integrations.Spotify.DataTypes;
+using MacroDeck.Server.Integrations.Spotify.Views.Plugin;
 
-namespace MacroDeck.Server.Application.Integrations.Internal.Spotify;
+namespace MacroDeck.Server.Integrations.Spotify;
 
 public class SpotifyIntegration : InternalExtension, IMusicPlayerIntegration
 {
@@ -20,14 +21,16 @@ public class SpotifyIntegration : InternalExtension, IMusicPlayerIntegration
 
 	public override string Version => "1.0.0";
 
-	public override List<MacroDeckAction> GetActions()
-	{
-		return [];
-	}
+	public override Type IntegrationConfigurationView => typeof(SpotifyIntegrationConfigurationView);
 
 	public ValueTask<MusicPlayerData> GetMusicPlayerData()
 	{
 		return ValueTask.FromResult(new MusicPlayerData());
+	}
+
+	public override List<MacroDeckAction> GetActions()
+	{
+		return [];
 	}
 
 	public override Task Start(CancellationToken cancellationToken = default)
@@ -53,9 +56,9 @@ public class SpotifyIntegration : InternalExtension, IMusicPlayerIntegration
 		if (config is null)
 		{
 			return new SpotifyIntegrationConfig
-				   {
-					   Enabled = false
-				   };
+			{
+				Enabled = false
+			};
 		}
 
 		var deserializedConfig = JsonSerializer.Deserialize<SpotifyIntegrationConfig>(config);
@@ -66,8 +69,8 @@ public class SpotifyIntegration : InternalExtension, IMusicPlayerIntegration
 
 		Logger.Error("Could not deserialize Spotify integration config");
 		return new SpotifyIntegrationConfig
-			   {
-				   Enabled = false
-			   };
+		{
+			Enabled = false
+		};
 	}
 }

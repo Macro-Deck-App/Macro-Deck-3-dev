@@ -1,4 +1,4 @@
-namespace MacroDeck.Server.Application.Integrations.Internal.Spotify.DataTypes;
+namespace MacroDeck.Server.Integrations.Spotify.DataTypes;
 
 public class SpotifyIntegrationConfig
 {

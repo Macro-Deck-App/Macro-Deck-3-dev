@@ -4,7 +4,7 @@ using MacroDeck.SDK.PluginSDK.Options;
 namespace MacroDeck.SDK.PluginSDK.Extensions;
 
 /// <summary>
-/// Base class for external MacroDeck plugins
+///     Base class for external MacroDeck plugins
 /// </summary>
 public abstract class PluginExtension : IMacroDeckExtension
 {
@@ -22,6 +22,8 @@ public abstract class PluginExtension : IMacroDeckExtension
 	public string Version => PluginOptions.Version.ToString();
 
 	public ExtensionType ExtensionType => ExtensionType.Plugin;
+
+	public Type? IntegrationConfigurationView { get; }
 
 	public abstract List<MacroDeckAction> GetActions();
 

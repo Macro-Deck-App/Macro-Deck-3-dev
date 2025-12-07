@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using ILogger = Serilog.ILogger;
 
-namespace MacroDeck.Server.UI.Controllers;
+namespace MacroDeck.Server.Controllers.Api.UI;
 
 /// <summary>
 /// Controller for serving UI assets

@@ -5,10 +5,10 @@ using MacroDeck.Server.Application.Plugins.Services;
 using MacroDeck.Server.Extensions;
 using MacroDeck.Server.Hubs;
 using MacroDeck.Server.Infrastructure;
+using MacroDeck.Server.Integrations;
 using MacroDeck.Server.Mappings;
 using MacroDeck.Server.Middlewares;
 using MacroDeck.Server.Services;
-using MacroDeck.Server.UI.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
@@ -85,7 +85,7 @@ public class Startup
 			.SetApplicationName("MacroDeck");
 	}
 
-	public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+	public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IServiceProvider serviceProvider)
 	{
 		app.UseCors("AllowAny");
 		app.UseDefaultFiles();
@@ -107,5 +107,7 @@ public class Startup
 		{
 			spa.Options.SourcePath = "wwwroot";
 		});
+
+		Task.Run(async () => await IntegrationsModule.StartInternalIntegrations(serviceProvider));
 	}
 }

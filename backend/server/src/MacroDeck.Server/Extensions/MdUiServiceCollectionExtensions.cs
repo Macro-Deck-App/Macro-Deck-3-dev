@@ -2,7 +2,7 @@ using MacroDeck.SDK.UI.DependencyInjection;
 using MacroDeck.SDK.UI.Registry;
 using MacroDeck.Server.Application.UI.Registry;
 using MacroDeck.Server.Application.UI.Services;
-using MacroDeck.Server.UI.Services;
+using MacroDeck.Server.Services;
 
 namespace MacroDeck.Server.Extensions;
 

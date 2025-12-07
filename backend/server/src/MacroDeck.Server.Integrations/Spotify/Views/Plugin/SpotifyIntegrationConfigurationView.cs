@@ -5,18 +5,18 @@ using MacroDeck.SDK.UI.Core;
 using MacroDeck.SDK.UI.Registry;
 using Serilog;
 
-namespace MacroDeck.Server.Views;
+namespace MacroDeck.Server.Integrations.Spotify.Views.Plugin;
 
-[MdUiView(ViewId = "server.TestCounterView")]
-public class TestCounterView : StatefulMdUiView
+[MdUiView(ViewId = "spotify.IntegrationConfigurationView")]
+public class SpotifyIntegrationConfigurationView : StatefulMdUiView
 {
 	public override MdUiState CreateState()
 	{
-		return new TestCounterState();
+		return new SpotifyIntegrationConfigurationState();
 	}
 }
 
-public class TestCounterState : MdUiState
+public class SpotifyIntegrationConfigurationState : MdUiState
 {
 	private State<int> _counter = null!;
 	private Computed<string> _displayText = null!;

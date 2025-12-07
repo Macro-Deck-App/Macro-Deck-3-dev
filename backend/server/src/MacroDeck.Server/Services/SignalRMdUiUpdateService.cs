@@ -1,10 +1,10 @@
 using MacroDeck.SDK.UI.Messages;
 using MacroDeck.SDK.UI.Serialization;
 using MacroDeck.Server.Application.UI.Services;
-using MacroDeck.Server.UI.Hubs;
+using MacroDeck.Server.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
-namespace MacroDeck.Server.UI.Services;
+namespace MacroDeck.Server.Services;
 
 /// <summary>
 ///     SignalR implementation of the UI update service

@@ -20,11 +20,10 @@ public static class ApplicationModule
 
 		services.AddSingleton<IPluginRegistry, PluginRegistry>();
 		services.AddScoped<IPluginActionInvoker, PluginActionInvoker>();
-		
+
 		services.AddSingleton<IIntegrationConfigurationProvider, InternalIntegrationConfigurationProvider>();
 
 		services.AddHostedService<CreateDefaultFolderHostedService>();
-		services.AddHostedService<LoadInternalIntegrationsHostedService>();
 
 		return services;
 	}

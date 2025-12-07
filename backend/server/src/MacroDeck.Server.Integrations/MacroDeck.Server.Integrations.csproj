@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\sdk\src\MacroDeck.SDK.PluginSDK\MacroDeck.SDK.PluginSDK.csproj"/>
+        <ProjectReference Include="..\MacroDeck.Server.Application\MacroDeck.Server.Application.csproj"/>
+    </ItemGroup>
+
+</Project>
