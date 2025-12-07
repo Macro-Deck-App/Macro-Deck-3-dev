@@ -35,10 +35,6 @@ export const routes: Routes = [
         loadComponent: () => import('./main-shell/pages/settings/settings.component').then(m => m.SettingsComponent),
       },
       {
-        path: 'ui-test',
-        loadComponent: () => import('./ui-test/ui-test.component').then(m => m.UiTestComponent),
-      },
-      {
         path: 'ui/:viewId',
         loadComponent: () => import('./ui-container/ui-container.component').then(m => m.UiContainerComponent),
       },

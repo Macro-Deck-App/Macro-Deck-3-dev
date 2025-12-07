@@ -1,143 +1,96 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import * as signalR from '@microsoft/signalr';
-import { ViewTreeNode, ViewTreeMessage, UiEventMessage, UiErrorMessage } from '../models';
+import { Observable } from 'rxjs';
+import { MdUiConnectionService, SessionMessage, SessionError } from './md-ui-connection.service';
 
-export interface PropertyUpdate {
-  nodeId: string;
-  properties: { [key: string]: any };
-}
-
-export interface PropertyUpdateBatch {
-  sessionId: string;
-  updates: PropertyUpdate[];
-}
-
+/**
+ * Service for managing MD UI views.
+ * Uses the shared MdUiConnectionService for all SignalR communication.
+ * 
+ * This service is now session-based: each view instance gets its own sessionId,
+ * and messages are multiplexed through a single SignalR connection.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class MdUiService {
-  private viewTreeSubject = new BehaviorSubject<ViewTreeNode | null>(null);
-  private propertyUpdatesSubject = new Subject<PropertyUpdateBatch>();
-  private errorSubject = new BehaviorSubject<string | null>(null);
-  private loadingSubject = new BehaviorSubject<boolean>(false);
-  private hubConnection: signalR.HubConnection | null = null;
-
-  public viewTree$: Observable<ViewTreeNode | null> = this.viewTreeSubject.asObservable();
-  public propertyUpdates$: Observable<PropertyUpdateBatch> = this.propertyUpdatesSubject.asObservable();
-  public error$: Observable<string | null> = this.errorSubject.asObservable();
-  public loading$: Observable<boolean> = this.loadingSubject.asObservable();
+  constructor(private connectionService: MdUiConnectionService) {}
 
   /**
-   * Initialize the service with an existing SignalR connection
+   * Initialize the global SignalR connection (call this once in app initialization)
    */
-  initialize(connection: signalR.HubConnection): void {
-    this.hubConnection = connection;
-    this.registerHandlers();
+  async initializeConnection(hubUrl: string = '/api/hubs/ui'): Promise<void> {
+    await this.connectionService.initialize(hubUrl);
   }
 
   /**
-   * Set the SignalR connection (alias for initialize)
+   * Navigate to a view and return the session ID
+   * @param viewId The ID of the view to navigate to
+   * @param sessionId Optional session ID to use (if not provided, a new one will be generated)
    */
-  setConnection(connection: signalR.HubConnection): void {
-    this.initialize(connection);
+  async navigateToView(viewId: string, sessionId?: string): Promise<string> {
+    return await this.connectionService.navigateToView(viewId, sessionId);
   }
 
   /**
-   * Register SignalR message handlers
+   * Send an event for a specific session
    */
-  private registerHandlers(): void {
-    if (!this.hubConnection) {
-      return;
-    }
-
-    this.hubConnection.on('ReceiveViewTree', (message: ViewTreeMessage) => {
-      this.viewTreeSubject.next(message.viewTree);
-      this.errorSubject.next(null);
-      this.loadingSubject.next(false);
-    });
-    
-    this.hubConnection.on('ReceivePropertyUpdates', (batch: PropertyUpdateBatch) => {
-      this.propertyUpdatesSubject.next(batch);
-    });
-
-    this.hubConnection.on('ReceiveError', (message: UiErrorMessage) => {
-      this.errorSubject.next(message.message);
-      this.loadingSubject.next(false);
-    });
-
-    this.hubConnection.on('PluginDisconnected', (pluginId: string) => {
-      this.errorSubject.next(`Plugin ${pluginId} has disconnected`);
-    });
+  async sendEvent(sessionId: string, viewId: string, eventName: string, parameters?: any): Promise<void> {
+    await this.connectionService.sendEvent(sessionId, viewId, eventName, parameters);
   }
 
   /**
-   * Navigate to a view
+   * Reload a view session
    */
-  navigateToView(viewId: string): void {
-    if (!this.hubConnection) {
-      return;
-    }
-
-    this.loadingSubject.next(true);
-    this.errorSubject.next(null);
-
-    this.hubConnection.invoke('NavigateToView', viewId)
-      .catch(err => {
-        this.errorSubject.next(`Failed to navigate: ${err.message}`);
-        this.loadingSubject.next(false);
-      });
+  async reloadView(sessionId: string): Promise<void> {
+    await this.connectionService.reloadView(sessionId);
   }
 
   /**
-   * Send an event to the backend
+   * Register a session (called when a view component initializes)
    */
-  sendEvent(viewId: string, eventName: string, parameters?: any): void {
-    if (!this.hubConnection) {
-      return;
-    }
-
-    const eventMessage: UiEventMessage = {
-      sessionId: this.hubConnection.connectionId || '',
-      viewId,
-      eventName,
-      parameters
-    };
-
-    this.hubConnection.invoke('SendEvent', eventMessage)
-      .catch(err => {
-        this.errorSubject.next(`Failed to send event: ${err.message}`);
-      });
+  registerSession(sessionId: string): void {
+    this.connectionService.registerSession(sessionId);
   }
 
   /**
-   * Reload the current view
+   * Unregister a session (called when a view component destroys)
    */
-  reloadView(): void {
-    if (!this.hubConnection) {
-      return;
-    }
-
-    this.loadingSubject.next(true);
-
-    this.hubConnection.invoke('ReloadView')
-      .catch(err => {
-        this.errorSubject.next(`Failed to reload: ${err.message}`);
-        this.loadingSubject.next(false);
-      });
+  unregisterSession(sessionId: string): void {
+    this.connectionService.unregisterSession(sessionId);
   }
 
   /**
-   * Clear error
+   * Get view tree messages for a specific session
    */
-  clearError(): void {
-    this.errorSubject.next(null);
+  getViewTreeMessages$(sessionId: string): Observable<SessionMessage> {
+    return this.connectionService.getViewTreeMessages$(sessionId);
   }
 
   /**
-   * Get current view tree
+   * Get property update messages for a specific session
    */
-  getCurrentViewTree(): ViewTreeNode | null {
-    return this.viewTreeSubject.value;
+  getPropertyUpdateMessages$(sessionId: string): Observable<any> {
+    return this.connectionService.getPropertyUpdateMessages$(sessionId);
+  }
+
+  /**
+   * Get error messages for a specific session
+   */
+  getErrorMessages$(sessionId: string): Observable<SessionError> {
+    return this.connectionService.getErrorMessages$(sessionId);
+  }
+
+  /**
+   * Check if the connection is established
+   */
+  isConnected(): boolean {
+    return this.connectionService.isConnected();
+  }
+
+  /**
+   * Get the connection state
+   */
+  getConnectionState() {
+    return this.connectionService.getConnectionState();
   }
 }

@@ -28,20 +28,6 @@ import { Subscription } from 'rxjs';
   selector: 'md-ui-renderer',
   template: `
     <div class="md-ui-root">
-      @if (loading$ | async) {
-        <div class="md-ui-loading">
-          <p>Loading...</p>
-        </div>
-      }
-
-      @if (error$ | async; as error) {
-        <div class="md-ui-error">
-          <h3>Error</h3>
-          <p>{{ error }}</p>
-          <button (click)="reload()">Reload</button>
-        </div>
-      }
-
       <ng-container #container></ng-container>
     </div>
   `,
@@ -50,55 +36,17 @@ import { Subscription } from 'rxjs';
       width: 100%;
       height: 100%;
     }
-
-    .md-ui-loading {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 40px;
-    }
-
-    .md-ui-error {
-      background-color: #fee;
-      border: 1px solid #f88;
-      border-radius: 4px;
-      padding: 20px;
-      margin: 20px;
-    }
-
-    .md-ui-error h3 {
-      margin: 0 0 10px 0;
-      color: #c00;
-    }
-
-    .md-ui-error button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .md-ui-error button:hover {
-      background-color: #0056b3;
-    }
   `],
   standalone: true,
   imports: [CommonModule]
 })
 export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
   @Input() viewTree: ViewTreeNode | null = null;
+  @Input() sessionId: string | null = null;
   @ViewChild('container', { read: ViewContainerRef, static: true }) container!: ViewContainerRef;
-
-  loading$;
-  error$;
 
   private componentRefMap = new Map<string, { ref: ComponentRef<any>, container: ViewContainerRef }>();
   private previousViewTree: ViewTreeNode | null = null;
-  private viewTreeSubscription?: Subscription;
-  private propertyUpdatesSubscription?: Subscription;
 
   private componentMap: { [key: string]: Type<any> } = {
     'MdText': MdTextComponent,
@@ -114,32 +62,18 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
   constructor(
     private mdUiService: MdUiService,
     private cdr: ChangeDetectorRef
-  ) {
-    this.loading$ = this.mdUiService.loading$;
-    this.error$ = this.mdUiService.error$;
-  }
+  ) {}
 
   ngOnInit(): void {
-    // Subscribe to view tree updates from the service
-    this.viewTreeSubscription = this.mdUiService.viewTree$.subscribe(viewTree => {
-      this.viewTree = viewTree;
-      if (viewTree) {
-        this.render();
-      } else {
-        this.clearComponents();
-      }
-      this.cdr.markForCheck();
-    });
-    
-    // Subscribe to property updates
-    this.propertyUpdatesSubscription = this.mdUiService.propertyUpdates$.subscribe(batch => {
-      this.applyPropertyUpdates(batch);
-    });
+    // Render initial tree if provided
+    if (this.viewTree) {
+      this.render();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    // Only handle manual @Input changes, not subscription updates
-    if (changes['viewTree'] && !changes['viewTree'].firstChange) {
+    // Handle view tree changes
+    if (changes['viewTree']) {
       if (this.viewTree) {
         this.render();
       } else {
@@ -150,8 +84,6 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearComponents();
-    this.viewTreeSubscription?.unsubscribe();
-    this.propertyUpdatesSubscription?.unsubscribe();
   }
 
   private clearComponents(): void {
@@ -352,11 +284,15 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
     node.events.forEach(eventName => {
       if (eventName === 'click') {
         componentRef.instance.click?.subscribe(() => {
-          this.mdUiService.sendEvent(node.nodeId, 'click');
+          if (this.sessionId) {
+            this.mdUiService.sendEvent(this.sessionId, node.nodeId, 'click');
+          }
         });
       } else if (eventName === 'changed') {
         componentRef.instance.valueChange?.subscribe((value: any) => {
-          this.mdUiService.sendEvent(node.nodeId, 'changed', { value });
+          if (this.sessionId) {
+            this.mdUiService.sendEvent(this.sessionId, node.nodeId, 'changed', { value });
+          }
         });
       }
     });
@@ -403,7 +339,7 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
   /**
    * Apply property updates received from the backend
    */
-  private applyPropertyUpdates(batch: any): void {
+  public applyPropertyUpdates(batch: any): void {
     if (!batch.updates || batch.updates.length === 0) {
       return;
     }
@@ -448,8 +384,4 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
     });
   }
 
-  reload(): void {
-    this.mdUiService.clearError();
-    this.mdUiService.reloadView();
-  }
 }

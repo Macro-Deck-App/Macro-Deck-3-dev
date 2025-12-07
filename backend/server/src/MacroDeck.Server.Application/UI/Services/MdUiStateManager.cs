@@ -13,13 +13,46 @@ namespace MacroDeck.Server.Application.UI.Services;
 public class MdUiStateManager
 {
 	private static readonly ILogger Log = Serilog.Log.ForContext<MdUiStateManager>();
+	private readonly object _callbackLock = new();
 	private readonly IMdUiRegistry _registry;
 	private readonly ConcurrentDictionary<string, SessionState> _sessions = new();
+	private bool _callbackInitialized;
 	private IMdUiUpdateService? _updateService;
 
 	public MdUiStateManager(IMdUiRegistry registry)
 	{
 		_registry = registry;
+		InitializeViewChangedCallback();
+	}
+
+	/// <summary>
+	///     Initialize the global view changed callback once
+	/// </summary>
+	private void InitializeViewChangedCallback()
+	{
+		lock (_callbackLock)
+		{
+			if (_callbackInitialized)
+			{
+				return;
+			}
+
+			// Set up change notification ONCE for all sessions
+			MdUiFramework.SetViewChangedCallback(changedView =>
+			{
+				// When any view changes, find which session it belongs to and rebuild
+				var session = _sessions.Values.FirstOrDefault(s =>
+					s.RootView == changedView || IsChildOf(changedView, s.RootView));
+
+				if (session != null)
+				{
+					// Schedule a rebuild (debounced to avoid multiple rebuilds per change batch)
+					ScheduleRebuild(session);
+				}
+			});
+
+			_callbackInitialized = true;
+		}
 	}
 
 	/// <summary>
@@ -54,29 +87,24 @@ public class MdUiStateManager
 	/// </summary>
 	public ViewTreeNode SetRootView(string sessionId, string viewId)
 	{
+		Log.Debug("SetRootView called for session {SessionId}, view {ViewId}", sessionId, viewId);
 		var session = GetOrCreateSession(sessionId);
+		Log.Debug("Session created/retrieved for {SessionId}, total sessions: {Count}", sessionId, _sessions.Count);
+
 		var view = _registry.CreateViewInstance(viewId);
 
 		session.RootView = view;
 		session.RootViewId = viewId;
 
-		// Set up change notification for this session
-		MdUiFramework.SetViewChangedCallback(changedView =>
-		{
-			// When any view changes, rebuild the entire tree for the session
-			var currentSession
-				= _sessions.Values.FirstOrDefault(s => s.RootView == changedView || IsChildOf(changedView, s.RootView));
-			if (currentSession != null)
-			{
-				// Schedule a rebuild (debounced to avoid multiple rebuilds per change batch)
-				ScheduleRebuild(currentSession);
-			}
-		});
-
+		// Build the initial view tree
 		var tree = BuildViewTree(sessionId)!;
 
 		// Store the initial tree for future diffs
 		session.LastSentTree = tree;
+
+		Log.Debug("SetRootView completed for session {SessionId}, ViewMap has {ViewMapCount} views",
+			sessionId,
+			session.ViewMap?.Count ?? 0);
 
 		return tree;
 	}
@@ -129,9 +157,6 @@ public class MdUiStateManager
 						if (propertyUpdates != null && propertyUpdates.Updates.Count > 0)
 						{
 							// Send incremental property updates
-							Log.Debug("Sending {Count} property updates for session {SessionId}",
-								propertyUpdates.Updates.Count,
-								session.SessionId);
 							await _updateService.SendPropertyUpdatesAsync(propertyUpdates);
 						}
 						else if (updatedTree != null)
@@ -277,7 +302,13 @@ public class MdUiStateManager
 	/// </summary>
 	public ViewTreeNode? BuildViewTree(string sessionId)
 	{
-		var session = GetOrCreateSession(sessionId);
+		// Try to get existing session - don't create a new one
+		if (!_sessions.TryGetValue(sessionId, out var session))
+		{
+			Log.Warning("Session {SessionId} not found when building view tree", sessionId);
+			return null;
+		}
+
 		if (session.RootView == null)
 		{
 			return null;
@@ -299,12 +330,22 @@ public class MdUiStateManager
 	/// </summary>
 	public void HandleEvent(string sessionId, string viewId, string eventName, Dictionary<string, object>? parameters)
 	{
-		Log.Debug("Handling event {EventName} for view {ViewId} in session {SessionId}",
+		Log.Debug("Handling event {EventName} for view {ViewId} in session {SessionId}. Total sessions: {Count}",
 			eventName,
 			viewId,
-			sessionId);
+			sessionId,
+			_sessions.Count);
 
-		var session = GetOrCreateSession(sessionId);
+		// Try to get existing session - don't create a new one
+		if (!_sessions.TryGetValue(sessionId, out var session))
+		{
+			Log.Warning(
+				"Session {SessionId} not found - session may have expired or never been created. Available sessions: {Sessions}",
+				sessionId,
+				string.Join(", ", _sessions.Keys));
+			return;
+		}
+
 		if (session.RootView == null)
 		{
 			Log.Warning("No root view found for session {SessionId}", sessionId);
@@ -319,11 +360,18 @@ public class MdUiStateManager
 			// Look up the view in the view map
 			if (session.ViewMap != null && session.ViewMap.TryGetValue(viewId, out view))
 			{
-				Log.Debug("Found view {ViewId} in view map, invoking event handler", viewId);
+				Log.Debug("Found view {ViewId} in view map (total: {ViewMapCount}), invoking event handler",
+					viewId,
+					session.ViewMap.Count);
 			}
 			else
 			{
-				Log.Warning("View {ViewId} not found in tree for session {SessionId}", viewId, sessionId);
+				Log.Warning(
+					"View {ViewId} not found in tree for session {SessionId}. ViewMap has {ViewMapCount} views: {ViewIds}",
+					viewId,
+					sessionId,
+					session.ViewMap?.Count ?? 0,
+					session.ViewMap != null ? string.Join(", ", session.ViewMap.Keys) : "null");
 				return;
 			}
 		}
@@ -404,7 +452,6 @@ public class MdUiStateManager
 		{
 			if (property.GetValue(view) is Action action)
 			{
-				Log.Debug("Invoking Action handler {HandlerName}", handlerName);
 				action.Invoke();
 				return;
 			}

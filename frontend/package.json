@@ -4,9 +4,12 @@
   "scripts": {
     "ng": "ng",
     "start-client": "ng serve client --port 8193",
-    "start-configurator": "ng serve configurator --port 8192",
+    "start-configurator": "npm run build-md-ui && ng serve configurator --port 8192",
+    "dev": "npm run build-md-ui && concurrently \"npm run watch-md-ui\" \"ng serve configurator --port 8192\"",
     "build-client": "ng build client",
-    "build-configurator": "ng build configurator",
+    "build-configurator": "npm run build-md-ui && ng build configurator",
+    "build-md-ui": "ng build md-ui",
+    "watch-md-ui": "ng build md-ui --watch",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -40,6 +43,7 @@
     "@angular/compiler-cli": "^20.2.4",
     "@angular/localize": "^20.2.4",
     "@types/jasmine": "~5.1.8",
+    "concurrently": "^9.2.1",
     "jasmine-core": "~5.7.1",
     "karma": "~6.4.4",
     "karma-chrome-launcher": "~3.2.0",

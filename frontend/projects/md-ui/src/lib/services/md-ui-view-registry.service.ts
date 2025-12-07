@@ -47,7 +47,6 @@ export class MdUiViewRegistryService {
    */
   subscribeToChanges(connection: HubConnection): void {
     connection.on('ViewRegistered', (metadata: MdUiViewMetadata) => {
-      console.log('[MdUiViewRegistry] View registered:', metadata);
       const currentViews = this.viewsSubject.value;
       const index = currentViews.findIndex(v => v.viewId === metadata.viewId);
       if (index >= 0) {
@@ -61,7 +60,6 @@ export class MdUiViewRegistryService {
     });
 
     connection.on('ViewUnregistered', (viewId: string) => {
-      console.log('[MdUiViewRegistry] View unregistered:', viewId);
       const currentViews = this.viewsSubject.value;
       this.viewsSubject.next(currentViews.filter(v => v.viewId !== viewId));
     });

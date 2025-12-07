@@ -63,8 +63,13 @@ export class UiTestComponent implements OnInit, OnDestroy {
         .withAutomaticReconnect()
         .build();
 
+      // Handle errors from the server
+      this.hubConnection.on('ReceiveError', (errorMessage: any) => {
+        console.error('[UiTestComponent] Received error from server:', errorMessage);
+        this.errorMessage = errorMessage.message || 'An error occurred';
+      });
+
       await this.hubConnection.start();
-      console.log('[UiTestComponent] SignalR connected');
 
       // Subscribe to view registry changes
       this.viewRegistryService.subscribeToChanges(this.hubConnection);
@@ -78,7 +83,6 @@ export class UiTestComponent implements OnInit, OnDestroy {
     try {
       this.isLoading = true;
       await this.viewRegistryService.refreshViews();
-      console.log('[UiTestComponent] Loaded views from REST API');
     } catch (error) {
       console.error('[UiTestComponent] Error loading views:', error);
       this.errorMessage = 'Failed to load registered views';
@@ -93,33 +97,23 @@ export class UiTestComponent implements OnInit, OnDestroy {
     this.router.navigate(['/developer/ui-test', viewId]);
   }
 
-  private async selectView(viewId: string): Promise<void> {
-    if (!this.hubConnection) {
-      return;
-    }
-
-    try {
-      this.selectedViewId = viewId;
-      await this.hubConnection.invoke('NavigateToView', viewId);
-      console.log('[UiTestComponent] Navigated to view:', viewId);
-    } catch (error) {
-      console.error('[UiTestComponent] Error navigating to view:', error);
-      this.errorMessage = `Failed to load view: ${viewId}`;
-    }
+  private selectView(viewId: string): void {
+    // Simply set the selected view ID
+    // The MdUiViewComponent will handle the SignalR session and navigation
+    this.selectedViewId = viewId;
+    this.errorMessage = undefined;
   }
 
-  async onReloadView(): Promise<void> {
-    if (!this.hubConnection || !this.selectedViewId) {
-      return;
-    }
-
-    try {
-      // Re-navigate to the same view to reload it
-      await this.hubConnection.invoke('NavigateToView', this.selectedViewId);
-      console.log('[UiTestComponent] View reloaded');
-    } catch (error) {
-      console.error('[UiTestComponent] Error reloading view:', error);
-      this.errorMessage = 'Failed to reload view';
-    }
+  onReloadView(): void {
+    // Force reload by temporarily clearing and resetting the selectedViewId
+    // This will cause MdUiViewComponent to recreate with a new session
+    const currentViewId = this.selectedViewId;
+    this.selectedViewId = undefined;
+    this.errorMessage = undefined;
+    
+    // Use setTimeout to ensure Angular detects the change
+    setTimeout(() => {
+      this.selectedViewId = currentViewId;
+    }, 0);
   }
 }

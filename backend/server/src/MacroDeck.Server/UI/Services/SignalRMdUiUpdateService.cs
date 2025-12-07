@@ -29,7 +29,15 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 			var text = FindTextInTree(viewTree);
 			Log.Verbose("Sending view tree to session {SessionId}, sample text: {Text}", sessionId, text);
 			
-			await _hubContext.Clients.Client(sessionId).ReceiveViewTree(new ViewTreeMessage
+			// Get the connection ID for this session
+			var connectionId = MdUiHub.GetConnectionIdForSession(sessionId);
+			if (connectionId == null)
+			{
+				Log.Warning("No connection found for session {SessionId}", sessionId);
+				return;
+			}
+			
+			await _hubContext.Clients.Client(connectionId).ReceiveViewTree(new ViewTreeMessage
 			{
 				SessionId = sessionId,
 				ViewTree = viewTree,
@@ -52,7 +60,15 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 			Log.Debug("Sending {Count} property updates to session {SessionId}", 
 				updates.Updates.Count, updates.SessionId);
 			
-			await _hubContext.Clients.Client(updates.SessionId).ReceivePropertyUpdates(updates);
+			// Get the connection ID for this session
+			var connectionId = MdUiHub.GetConnectionIdForSession(updates.SessionId);
+			if (connectionId == null)
+			{
+				Log.Warning("No connection found for session {SessionId}", updates.SessionId);
+				return;
+			}
+			
+			await _hubContext.Clients.Client(connectionId).ReceivePropertyUpdates(updates);
 		}
 		catch (Exception ex)
 		{
@@ -88,7 +104,15 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 		{
 			Log.Verbose("Sending error to session {SessionId}: {Message}", sessionId, message);
 			
-			await _hubContext.Clients.Client(sessionId).ReceiveError(new UiErrorMessage
+			// Get the connection ID for this session
+			var connectionId = MdUiHub.GetConnectionIdForSession(sessionId);
+			if (connectionId == null)
+			{
+				Log.Warning("No connection found for session {SessionId}", sessionId);
+				return;
+			}
+			
+			await _hubContext.Clients.Client(connectionId).ReceiveError(new UiErrorMessage
 			{
 				SessionId = sessionId,
 				Message = message,

@@ -70,15 +70,6 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
       const newValue = changes['value'].currentValue || '';
       const isFirstChange = changes['value'].firstChange;
       
-      console.log('[MdTextField] Value change detected:', {
-        nodeId: this.nodeId,
-        newValue,
-        localValue: this.localValue,
-        isFirstChange,
-        isUserTyping: this.isUserTyping,
-        hasFocus: this.inputElement?.nativeElement === document.activeElement
-      });
-      
       // Only update if:
       // - First time (initialization)
       // - User is not typing (to avoid overwriting user input)
@@ -109,7 +100,6 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
   onInput(event: Event): void {
     this.isUserTyping = true;
     this.localValue = (event.target as HTMLInputElement).value;
-    console.log('[MdTextField] User input:', { nodeId: this.nodeId, value: this.localValue });
     
     // Clear any existing timeout
     if (this.typingTimeout) {
@@ -122,7 +112,6 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
     // Reset isUserTyping after a short delay (e.g., 300ms after last keypress)
     this.typingTimeout = setTimeout(() => {
       this.isUserTyping = false;
-      console.log('[MdTextField] User stopped typing:', { nodeId: this.nodeId });
     }, 300);
   }
 
@@ -140,7 +129,6 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
     this.isUserTyping = false;
     // Only emit if the value has actually changed
     if (this.localValue !== this.value) {
-      console.log('[MdTextField] Emitting value on blur:', { nodeId: this.nodeId, value: this.localValue });
       this.valueChange.emit(this.localValue);
     }
   }
@@ -150,7 +138,6 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
     // Emit on Enter key
     event.preventDefault();
     if (this.localValue !== this.value) {
-      console.log('[MdTextField] Emitting value on enter:', { nodeId: this.nodeId, value: this.localValue });
       this.valueChange.emit(this.localValue);
     }
     // Blur the input to remove focus

@@ -1,13 +1,16 @@
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MdUiRendererComponent } from '../md-ui-renderer.component';
 import { MdUiService } from '../../services/md-ui.service';
 import { ViewTreeNode } from '../../models/view-tree-node.model';
-import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { Subscription } from 'rxjs';
 
 /**
  * Wrapper component that simplifies using the MD UI Framework.
- * Just provide a viewId and it handles the connection, navigation and rendering.
+ * Just provide a viewId and it handles the session management, navigation and rendering.
+ * 
+ * Uses the shared SignalR connection from MdUiConnectionService, so multiple instances
+ * of this component don't create multiple connections.
  * 
  * Usage:
  * <md-ui-view viewId="server.TestCounterView"></md-ui-view>
@@ -16,11 +19,10 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } fro
   selector: 'md-ui-view',
   standalone: true,
   imports: [CommonModule, MdUiRendererComponent],
-  providers: [MdUiService],
   template: `
     @if (currentTree) {
-      <md-ui-renderer [viewTree]="currentTree"></md-ui-renderer>
-    } @else if (isConnecting) {
+      <md-ui-renderer [viewTree]="currentTree" [sessionId]="sessionId"></md-ui-renderer>
+    } @else if (isLoading) {
       <div class="d-flex justify-content-center align-items-center p-5">
         <div class="spinner-border text-primary" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -38,12 +40,14 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } fro
 })
 export class MdUiViewComponent implements OnInit, OnDestroy {
   @Input() viewId!: string;
+  @ViewChild(MdUiRendererComponent) renderer?: MdUiRendererComponent;
 
   currentTree: ViewTreeNode | null = null;
-  isConnecting = false;
+  isLoading = false;
   error: string | null = null;
+  sessionId: string | null = null;
   
-  private connection: HubConnection | null = null;
+  private subscriptions: Subscription[] = [];
 
   constructor(private mdUiService: MdUiService) {}
 
@@ -53,13 +57,18 @@ export class MdUiViewComponent implements OnInit, OnDestroy {
       return;
     }
 
-    await this.connectAndNavigate();
+    await this.loadView();
   }
 
   async ngOnDestroy() {
-    if (this.connection && this.connection.state === HubConnectionState.Connected) {
-      await this.connection.stop();
-      this.connection = null;
+    // Unsubscribe from all observables
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subscriptions = [];
+
+    // Unregister session
+    if (this.sessionId) {
+      this.mdUiService.unregisterSession(this.sessionId);
+      this.sessionId = null;
     }
   }
 
@@ -67,57 +76,88 @@ export class MdUiViewComponent implements OnInit, OnDestroy {
     this.error = null;
     this.currentTree = null;
     
-    if (this.connection && this.connection.state === HubConnectionState.Connected) {
-      await this.connection.stop();
+    // Unregister old session
+    if (this.sessionId) {
+      this.mdUiService.unregisterSession(this.sessionId);
+      this.sessionId = null;
     }
     
-    await this.connectAndNavigate();
+    // Unsubscribe from old subscriptions
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subscriptions = [];
+    
+    await this.loadView();
   }
 
-  private async connectAndNavigate() {
+  private async loadView() {
     try {
-      this.isConnecting = true;
+      this.isLoading = true;
       this.error = null;
 
-      // Build SignalR connection
-      this.connection = new HubConnectionBuilder()
-        .withUrl('/api/hubs/ui')
-        .withAutomaticReconnect()
-        .configureLogging(LogLevel.Information)
-        .build();
+      // Ensure connection is initialized
+      if (!this.mdUiService.isConnected()) {
+        await this.mdUiService.initializeConnection();
+      }
 
-      // Setup MdUiService to use this connection for sending events
-      this.mdUiService.setConnection(this.connection);
-
-      // Listen for view tree updates
-      this.connection.on('ReceiveViewTree', (data: { sessionId: string, viewTree: ViewTreeNode, rootViewId: string }) => {
-        console.log('[MdUiView] Received view tree:', data);
-        this.currentTree = data.viewTree;
-        this.isConnecting = false;
-      });
-
-      // Handle disconnection
-      this.connection.onclose((error) => {
-        console.error('[MdUiView] Connection closed:', error);
-        if (error) {
-          this.error = `Connection lost: ${error.message || error}`;
+      // Create a session ID upfront (we'll use it for pre-subscription)
+      const tempSessionId = this.generateSessionId();
+      
+      // Subscribe to view tree updates BEFORE navigating (to avoid race condition)
+      const viewTreeSub = this.mdUiService.getViewTreeMessages$(tempSessionId).subscribe({
+        next: (message) => {
+          this.currentTree = message.viewTree;
+          this.isLoading = false;
+        },
+        error: (err) => {
+          console.error('[MdUiView] Error receiving view tree:', err);
+          this.error = `Failed to receive view tree: ${err.message || err}`;
+          this.isLoading = false;
         }
-        this.isConnecting = false;
       });
+      this.subscriptions.push(viewTreeSub);
 
-      // Connect to hub
-      console.log('[MdUiView] Connecting to UI hub...');
-      await this.connection.start();
-      console.log('[MdUiView] Connected to UI hub');
-      
-      // Navigate to view
-      console.log('[MdUiView] Navigating to view:', this.viewId);
-      await this.connection.invoke('NavigateToView', this.viewId);
-      
+      // Navigate to view with pre-registered session ID
+      this.sessionId = await this.mdUiService.navigateToView(this.viewId, tempSessionId);
+
+      // Subscribe to error messages for this session
+      const errorSub = this.mdUiService.getErrorMessages$(this.sessionId).subscribe({
+        next: (errorMsg) => {
+          console.error('[MdUiView] Received error for session:', this.sessionId, errorMsg);
+          this.error = errorMsg.error;
+          this.isLoading = false;
+        }
+      });
+      this.subscriptions.push(errorSub);
+
+      // Subscribe to property updates for this session
+      const propertyUpdateSub = this.mdUiService.getPropertyUpdateMessages$(this.sessionId).subscribe({
+        next: (batch) => {
+          if (this.renderer) {
+            this.renderer.applyPropertyUpdates(batch);
+          } else {
+          }
+        },
+        error: (err) => {
+          console.error('[MdUiView] Error receiving property updates:', err);
+        }
+      });
+      this.subscriptions.push(propertyUpdateSub);
+
     } catch (err: any) {
-      console.error('[MdUiView] Error connecting or navigating:', err);
+      console.error('[MdUiView] Error loading view:', err);
       this.error = `Failed to load view: ${err.message || err}`;
-      this.isConnecting = false;
+      this.isLoading = false;
     }
+  }
+
+  /**
+   * Generate a unique session ID for this view instance
+   */
+  private generateSessionId(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
   }
 }
