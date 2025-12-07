@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MdUiRendererComponent } from '../md-ui-renderer.component';
 import { MdUiService } from '../../services/md-ui.service';
@@ -38,7 +38,7 @@ import { Subscription } from 'rxjs';
     }
   `
 })
-export class MdUiViewComponent implements OnInit, OnDestroy {
+export class MdUiViewComponent implements OnInit, OnDestroy, OnChanges {
   @Input() viewId!: string;
   @ViewChild(MdUiRendererComponent) renderer?: MdUiRendererComponent;
 
@@ -58,6 +58,13 @@ export class MdUiViewComponent implements OnInit, OnDestroy {
     }
 
     await this.loadView();
+  }
+
+  async ngOnChanges(changes: SimpleChanges) {
+    // If viewId changes (and it's not the first change), reload the view
+    if (changes['viewId'] && !changes['viewId'].firstChange) {
+      await this.reload();
+    }
   }
 
   async ngOnDestroy() {
