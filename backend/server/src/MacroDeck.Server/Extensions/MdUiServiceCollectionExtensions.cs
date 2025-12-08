@@ -1,5 +1,5 @@
-using MacroDeck.SDK.UI.DependencyInjection;
 using MacroDeck.SDK.UI.Registry;
+using MacroDeck.SDK.UI.Services;
 using MacroDeck.Server.Application.UI.Registry;
 using MacroDeck.Server.Application.UI.Services;
 using MacroDeck.Server.Services;
@@ -23,12 +23,14 @@ public static class MdUiServiceCollectionExtensions
 		services.AddSingleton<MdAssetService>();
 		services.AddSingleton<IMdUiUpdateService, SignalRMdUiUpdateService>();
 
+		// Register link request service (uses SignalR groups directly via IHubContext)
+		services.AddSingleton<LinkRequestService>();
+		services.AddSingleton<IMdUiLinkService>(sp => sp.GetRequiredService<LinkRequestService>());
+
 		// Register view registration service
 		services.AddHostedService<UiViewRegistrationService>();
 
-		// Initialize service provider for views
-		var serviceProvider = services.BuildServiceProvider();
-		MdUiServiceProvider.Initialize(serviceProvider);
+		// Note: MdUiServiceProvider is initialized in Startup.Configure with the real service provider
 
 		return services;
 	}

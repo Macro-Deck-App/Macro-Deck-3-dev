@@ -308,7 +308,7 @@ public class ViewTreeSerializer
 		var childProp = view.GetType().GetProperty("Child");
 		if (childProp != null)
 		{
-			if (childProp.GetValue(view) is MdUiView child)
+			if (childProp.GetValue(view) is MdUiView child && child.Visible)
 			{
 				var childPath = $"{view.ViewId}.child";
 				node.Children.Add(SerializeInternal(child, childPath));
@@ -320,7 +320,7 @@ public class ViewTreeSerializer
 		var childrenProp = view.GetType().GetProperty("Children");
 		if (childrenProp != null && childrenProp.GetValue(view) is IEnumerable<MdUiView> children)
 		{
-			foreach (var child in children)
+			foreach (var child in children.Where(c => c.Visible))
 			{
 				var childPath = $"{view.ViewId}.child[{childIndex++}]";
 				node.Children.Add(SerializeInternal(child, childPath));

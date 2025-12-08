@@ -19,7 +19,7 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 	}
 
 	/// <summary>
-	///     Send view tree to a specific session
+	///     Send view tree to a specific session using SignalR groups
 	/// </summary>
 	public override async Task SendViewTreeAsync(string sessionId, ViewTreeNode viewTree)
 	{
@@ -29,15 +29,8 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 			var text = FindTextInTree(viewTree);
 			Log.Verbose("Sending view tree to session {SessionId}, sample text: {Text}", sessionId, text);
 			
-			// Get the connection ID for this session
-			var connectionId = MdUiHub.GetConnectionIdForSession(sessionId);
-			if (connectionId == null)
-			{
-				Log.Warning("No connection found for session {SessionId}", sessionId);
-				return;
-			}
-			
-			await _hubContext.Clients.Client(connectionId).ReceiveViewTree(new ViewTreeMessage
+			// Use SignalR groups to send to the session
+			await _hubContext.Clients.Group(sessionId).ReceiveViewTree(new ViewTreeMessage
 			{
 				SessionId = sessionId,
 				ViewTree = viewTree,
@@ -51,7 +44,7 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 	}
 	
 	/// <summary>
-	///     Send property updates to a specific session
+	///     Send property updates to a specific session using SignalR groups
 	/// </summary>
 	public override async Task SendPropertyUpdatesAsync(PropertyUpdateBatch updates)
 	{
@@ -60,15 +53,8 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 			Log.Debug("Sending {Count} property updates to session {SessionId}", 
 				updates.Updates.Count, updates.SessionId);
 			
-			// Get the connection ID for this session
-			var connectionId = MdUiHub.GetConnectionIdForSession(updates.SessionId);
-			if (connectionId == null)
-			{
-				Log.Warning("No connection found for session {SessionId}", updates.SessionId);
-				return;
-			}
-			
-			await _hubContext.Clients.Client(connectionId).ReceivePropertyUpdates(updates);
+			// Use SignalR groups to send to the session
+			await _hubContext.Clients.Group(updates.SessionId).ReceivePropertyUpdates(updates);
 		}
 		catch (Exception ex)
 		{
@@ -96,7 +82,7 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 	}
 
 	/// <summary>
-	///     Send error to a specific session
+	///     Send error to a specific session using SignalR groups
 	/// </summary>
 	public override async Task SendErrorAsync(string sessionId, string message, string? viewId = null)
 	{
@@ -104,15 +90,8 @@ public class SignalRMdUiUpdateService : MdUiUpdateService
 		{
 			Log.Verbose("Sending error to session {SessionId}: {Message}", sessionId, message);
 			
-			// Get the connection ID for this session
-			var connectionId = MdUiHub.GetConnectionIdForSession(sessionId);
-			if (connectionId == null)
-			{
-				Log.Warning("No connection found for session {SessionId}", sessionId);
-				return;
-			}
-			
-			await _hubContext.Clients.Client(connectionId).ReceiveError(new UiErrorMessage
+			// Use SignalR groups to send to the session
+			await _hubContext.Clients.Group(sessionId).ReceiveError(new UiErrorMessage
 			{
 				SessionId = sessionId,
 				Message = message,

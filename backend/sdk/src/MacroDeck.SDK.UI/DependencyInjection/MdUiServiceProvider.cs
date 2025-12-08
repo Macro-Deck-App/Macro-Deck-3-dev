@@ -44,4 +44,17 @@ public static class MdUiServiceProvider
 
 		return _serviceProvider.GetService<T>();
 	}
+
+    /// <summary>
+    ///     Gets a service from the DI container by type
+    /// </summary>
+    public static object? GetService(Type serviceType)
+	{
+		if (_serviceProvider == null)
+		{
+			throw new InvalidOperationException("Service provider not initialized. Call Initialize first.");
+		}
+
+		return _serviceProvider.GetService(serviceType);
+	}
 }

@@ -97,3 +97,22 @@ public class AssetResponseMessage
     public required byte[] Data { get; init; }
     public required string ContentType { get; init; }
 }
+
+/// <summary>
+/// Message to request user approval for opening a link
+/// </summary>
+public class LinkRequestMessage
+{
+    public required string RequestId { get; init; }
+    public required string SessionId { get; init; }
+    public required string Url { get; init; }
+}
+
+/// <summary>
+/// Message with user's response to link request
+/// </summary>
+public class LinkResponseMessage
+{
+    public required string RequestId { get; init; }
+    public required bool Approved { get; init; }
+}

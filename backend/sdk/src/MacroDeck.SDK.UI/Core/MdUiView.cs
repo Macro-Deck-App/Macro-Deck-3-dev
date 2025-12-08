@@ -13,6 +13,11 @@ public abstract class MdUiView
     public string ViewId { get; set; } = string.Empty;
 
     /// <summary>
+    ///     If false, this view will not be rendered
+    /// </summary>
+    public bool Visible { get; set; } = true;
+
+    /// <summary>
     ///     Optional padding around the view
     /// </summary>
     public EdgeInsets? Padding { get; set; }

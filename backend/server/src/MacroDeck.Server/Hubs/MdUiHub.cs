@@ -2,6 +2,7 @@ using MacroDeck.SDK.UI.Messages;
 using MacroDeck.SDK.UI.Registry;
 using MacroDeck.Server.Application.UI.Registry;
 using MacroDeck.Server.Application.UI.Services;
+using MacroDeck.Server.Services;
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using ILogger = Serilog.ILogger;
@@ -24,12 +25,14 @@ public class MdUiHub : Hub<IMdUiClient>
 	private readonly ILogger _logger = Log.ForContext<MdUiHub>();
 	private readonly MdUiRegistry _registry;
 	private readonly MdUiStateManager _stateManager;
+	private readonly LinkRequestService _linkRequestService;
 
-	public MdUiHub(MdUiStateManager stateManager, MdUiRegistry registry, IHubContext<MdUiHub, IMdUiClient> hubContext)
+	public MdUiHub(MdUiStateManager stateManager, MdUiRegistry registry, IHubContext<MdUiHub, IMdUiClient> hubContext, LinkRequestService linkRequestService)
 	{
 		_stateManager = stateManager;
 		_registry = registry;
 		_hubContext = hubContext;
+		_linkRequestService = linkRequestService;
 	}
 
 	public override async Task OnConnectedAsync()
@@ -64,6 +67,9 @@ public class MdUiHub : Hub<IMdUiClient>
 						Context.ConnectionId);
 					_stateManager.RemoveSession(sessionId);
 					_sessionToConnection.Remove(sessionId);
+					
+					// Remove from group (this happens automatically on disconnect, but we do it explicitly for clarity)
+					// Groups.RemoveFromGroupAsync will be called automatically
 				}
 
 				_connectionSessions.Remove(Context.ConnectionId);
@@ -125,6 +131,10 @@ public class MdUiHub : Hub<IMdUiClient>
 					Context.ConnectionId,
 					_sessionToConnection.Count);
 			}
+
+			// Add this connection to the session group
+			await Groups.AddToGroupAsync(Context.ConnectionId, actualSessionId);
+			_logger.Debug("Added connection {ConnectionId} to group {SessionId}", Context.ConnectionId, actualSessionId);
 
 			var viewTree = _stateManager.SetRootView(actualSessionId, viewId);
 
@@ -319,13 +329,22 @@ public class MdUiHub : Hub<IMdUiClient>
 	}
 
 	/// <summary>
-	///     Get the connection ID for a session ID (used by the update service)
+	///     Handles user response to a link request
 	/// </summary>
-	public static string? GetConnectionIdForSession(string sessionId)
+	public async Task RespondToLinkRequest(LinkResponseMessage response)
 	{
-		lock (_connectionSessionsLock)
+		try
 		{
-			return _sessionToConnection.TryGetValue(sessionId, out var connectionId) ? connectionId : null;
+			_logger.Debug("Received link response from client: {RequestId} - {Approved}", 
+				response.RequestId, response.Approved);
+
+			_linkRequestService.HandleLinkResponse(response);
 		}
+		catch (Exception ex)
+		{
+			_logger.Error(ex, "Error handling link response");
+		}
+
+		await Task.CompletedTask;
 	}
 }

@@ -5,6 +5,8 @@ import {SystemNotificationService} from './common/services/system-notification.s
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {ConnectingComponent} from './connecting/connecting.component';
 import {WidgetService} from './common/services/widget.service';
+import { LinkRequestService as MdUiLinkRequestService } from 'md-ui';
+import { LinkRequestService as ConfiguratorLinkRequestService } from './common/services/link-request.service';
 
 @Component({
   selector: 'app-root',
@@ -21,10 +23,17 @@ export class AppComponent implements OnInit {
 
   constructor(private folderService: FolderService,
               private widgetService: WidgetService,
-              private systemNotificationsService: SystemNotificationService) {
+              private systemNotificationsService: SystemNotificationService,
+              private mdUiLinkRequestService: MdUiLinkRequestService,
+              private configuratorLinkRequestService: ConfiguratorLinkRequestService) {
   }
 
   public async ngOnInit() {
+    // Set up link request provider for md-ui library
+    this.mdUiLinkRequestService.setProvider((request) => {
+      return this.configuratorLinkRequestService.showLinkRequest(request);
+    });
+
     this.systemNotificationsService.reconnectingSubject
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject, filter } from 'rxjs';
-import { ViewTreeNode, ViewTreeMessage, UiEventMessage, UiErrorMessage } from '../models';
+import { ViewTreeNode, ViewTreeMessage, UiEventMessage, UiErrorMessage, LinkRequestMessage, LinkResponseMessage } from '../models';
+import { LinkRequestService } from './link-request.service';
 
 export interface SessionMessage {
   sessionId: string;
@@ -35,6 +36,8 @@ export class MdUiConnectionService {
   private errorMessages$ = new Subject<SessionError>();
   private sessions = new Set<string>();
 
+  constructor(private linkRequestService: LinkRequestService) {}
+
   /**
    * Initialize the connection (called once globally)
    */
@@ -46,7 +49,7 @@ export class MdUiConnectionService {
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl)
       .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Warning)
+      .configureLogging(signalR.LogLevel.Debug)
       .build();
 
     this.registerHandlers();
@@ -57,7 +60,7 @@ export class MdUiConnectionService {
         console.error('[MdUiConnection] Connection closed:', error);
       }
       this.connectionState$.next(signalR.HubConnectionState.Disconnected);
-      
+
       // Notify all sessions about the error
       this.sessions.forEach(sessionId => {
         this.errorMessages$.next({
@@ -73,7 +76,7 @@ export class MdUiConnectionService {
 
     this.connection.onreconnected(async (connectionId) => {
       this.connectionState$.next(signalR.HubConnectionState.Connected);
-      
+
       // Reload all active sessions
       for (const sessionId of this.sessions) {
         try {
@@ -130,6 +133,40 @@ export class MdUiConnectionService {
     this.connection.on('PluginDisconnected', (pluginId: string) => {
       console.warn('[MdUiConnection] Plugin disconnected:', pluginId);
     });
+
+    // Handle link requests
+    this.connection.on('LinkRequest', async (message: LinkRequestMessage) => {
+      await this.handleLinkRequest(message);
+    });
+  }
+
+  /**
+   * Handle link request message
+   */
+  private async handleLinkRequest(message: LinkRequestMessage): Promise<void> {
+    try {
+      const approved = await this.linkRequestService.showLinkRequest(message);
+
+      const response: LinkResponseMessage = {
+        requestId: message.requestId,
+        approved: approved
+      };
+
+      await this.connection!.invoke('RespondToLinkRequest', response);
+    } catch (error) {
+      console.error('[MdUiConnection] Error handling link request:', error);
+
+      const response: LinkResponseMessage = {
+        requestId: message.requestId,
+        approved: false
+      };
+
+      try {
+        await this.connection!.invoke('RespondToLinkRequest', response);
+      } catch (err) {
+        console.error('[MdUiConnection] Failed to send error response:', err);
+      }
+    }
   }
 
   /**
@@ -157,15 +194,15 @@ export class MdUiConnectionService {
 
     // Use provided session ID or generate a new one
     const actualSessionId = sessionId || this.generateSessionId();
-    
-    
+
+
     // Register the session before navigating
     this.registerSession(actualSessionId);
-    
+
     try {
       // Invoke NavigateToView with the session ID and get the returned session ID from the server
       const returnedSessionId = await this.connection.invoke<string>('NavigateToView', viewId, actualSessionId);
-      
+
       // Use the session ID returned from the server (should be the same as actualSessionId)
       return returnedSessionId || actualSessionId;
     } catch (error) {

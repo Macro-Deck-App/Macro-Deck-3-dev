@@ -1,4 +1,5 @@
 using MacroDeck.SDK.UI.DependencyInjection;
+using Serilog;
 
 namespace MacroDeck.SDK.UI.Core;
 
@@ -7,12 +8,22 @@ namespace MacroDeck.SDK.UI.Core;
 /// </summary>
 public abstract class MdUiState
 {
+	private static readonly ILogger Logger = Log.ForContext<MdUiState>();
 	private readonly List<IState> _states = [];
 	private StatefulMdUiView? _view;
+	private string? _sessionId;
 
 	internal void Attach(StatefulMdUiView view)
 	{
 		_view = view;
+	}
+
+	/// <summary>
+	///     Sets the session ID for this state (called by framework)
+	/// </summary>
+	public void SetSessionId(string sessionId)
+	{
+		_sessionId = sessionId;
 	}
 
 	/// <summary>
@@ -72,5 +83,37 @@ public abstract class MdUiState
 		where T : notnull
 	{
 		return MdUiServiceProvider.GetRequiredService<T>();
+	}
+
+	/// <summary>
+	///     Requests to open a link in the user's browser.
+	///     Shows a confirmation dialog to the user and returns whether they approved.
+	/// </summary>
+	/// <param name="url">The URL to open</param>
+	/// <returns>True if user approved, false if denied or timeout</returns>
+	protected async Task<bool> OpenLink(string url)
+	{
+		if (string.IsNullOrEmpty(_sessionId))
+		{
+			Logger.Warning("OpenLink called but SessionId is not set");
+			return false;
+		}
+
+		try
+		{
+			var linkService = MdUiServiceProvider.GetService<MacroDeck.SDK.UI.Services.IMdUiLinkService>();
+			if (linkService == null)
+			{
+				Logger.Warning("LinkService not available");
+				return false;
+			}
+
+			return await linkService.RequestLinkOpen(_sessionId, url);
+		}
+		catch (Exception ex)
+		{
+			Logger.Error(ex, "Failed to open link {Url}", url);
+			return false;
+		}
 	}
 }

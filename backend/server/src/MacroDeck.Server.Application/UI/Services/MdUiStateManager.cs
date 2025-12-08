@@ -93,6 +93,14 @@ public class MdUiStateManager
 
 		var view = _registry.CreateViewInstance(viewId);
 
+		// If it's a stateful view, set the session ID so OpenLink can work
+		if (view is StatefulMdUiView statefulView)
+		{
+			statefulView.EnsureState();
+			var state = GetStateFromView(statefulView);
+			state?.SetSessionId(sessionId);
+		}
+
 		session.RootView = view;
 		session.RootViewId = viewId;
 
@@ -107,6 +115,16 @@ public class MdUiStateManager
 			session.ViewMap?.Count ?? 0);
 
 		return tree;
+	}
+
+	/// <summary>
+	///     Gets the state from a stateful view using reflection
+	/// </summary>
+	private MdUiState? GetStateFromView(StatefulMdUiView view)
+	{
+		var stateField = view.GetType().BaseType?.GetField("_state",
+			System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+		return stateField?.GetValue(view) as MdUiState;
 	}
 
 	private void ScheduleRebuild(SessionState session)

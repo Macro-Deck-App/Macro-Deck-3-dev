@@ -1,4 +1,4 @@
-import { Component, Input, ViewChild, ViewContainerRef, AfterViewInit } from '@angular/core';
+import { Component, Input, ViewChild, ViewContainerRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EdgeInsets } from '../../models';
 
@@ -21,7 +21,7 @@ import { EdgeInsets } from '../../models';
   standalone: true,
   imports: [CommonModule]
 })
-export class MdColumnComponent implements AfterViewInit {
+export class MdColumnComponent {
   @Input() mainAxisAlignment?: string;
   @Input() crossAxisAlignment?: string;
   @Input() spacing?: number;
@@ -30,12 +30,8 @@ export class MdColumnComponent implements AfterViewInit {
   @Input() customCss?: string;
   @Input() customClasses?: string;
 
-  @ViewChild('childContainer', { read: ViewContainerRef, static: false })
+  @ViewChild('childContainer', { read: ViewContainerRef, static: true })
   childContainer!: ViewContainerRef;
-
-  ngAfterViewInit() {
-    // ViewChild is now available
-  }
 
   get marginStyle(): string | undefined {
     if (!this.margin) return undefined;

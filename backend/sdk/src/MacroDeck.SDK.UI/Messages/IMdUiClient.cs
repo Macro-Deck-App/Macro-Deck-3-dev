@@ -42,4 +42,9 @@ public interface IMdUiClient
 	///     Notifies client that a view was unregistered
 	/// </summary>
 	Task ViewUnregistered(string viewId);
+
+	/// <summary>
+	///     Requests user approval to open a link
+	/// </summary>
+	Task LinkRequest(LinkRequestMessage message);
 }

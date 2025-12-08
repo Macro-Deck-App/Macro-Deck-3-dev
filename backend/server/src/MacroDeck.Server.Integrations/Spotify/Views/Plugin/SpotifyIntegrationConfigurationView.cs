@@ -212,10 +212,18 @@ public class SpotifyIntegrationConfigurationState : MdUiState
 				"Open Spotify Developer Dashboard",
 				"Visit the Spotify Developer Dashboard and log in with your Spotify account."),
 			new MdButton("Open Spotify Developer Dashboard →",
-				() =>
+				async () =>
 				{
-// TODO: Open browser to https://developer.spotify.com/dashboard
 					Log.Logger.Information("Opening Spotify Developer Dashboard");
+					var approved = await OpenLink("https://developer.spotify.com/dashboard");
+					if (approved)
+					{
+						Log.Logger.Information("User approved opening Spotify Developer Dashboard");
+					}
+					else
+					{
+						Log.Logger.Information("User denied opening Spotify Developer Dashboard");
+					}
 				})
 			{
 				Role = ButtonRole.Primary,
@@ -226,7 +234,7 @@ public class SpotifyIntegrationConfigurationState : MdUiState
 				"Click on 'Create app' button in the dashboard."),
 			BuildNumberedStep("3",
 				"Fill in Application Details",
-				"Enter: App Name: Macro Deck, App Description: Integration for Macro Deck, Redirect URI: http://127.0.0.1:8192/api/integrations/spotify/callback"),
+				"Enter: App Name: Macro Deck, App Description: Integration for Macro Deck, Redirect URI: http://127.0.0.1:8191/api/integrations/spotify/callback"),
 			BuildNumberedStep("4",
 				"Accept Terms and Create",
 				"Check the terms and conditions, then click Save."))
@@ -279,19 +287,18 @@ public class SpotifyIntegrationConfigurationState : MdUiState
 				Margin = EdgeInsets.Only(bottom: 16),
 				Padding = EdgeInsets.All(12)
 			},
-			_errorMessage.Value != ""
-				? new MdContainer
+			new MdContainer
+			{
+				Visible = _errorMessage.Value != "",
+				Padding = EdgeInsets.All(12),
+				BorderRadius = BorderRadius.Circular(8),
+				BackgroundColor = "#FFEBEE",
+				Child = new MdText(_errorMessage.Value)
 				{
-					Padding = EdgeInsets.All(12),
-					BorderRadius = BorderRadius.Circular(8),
-					BackgroundColor = "#FFEBEE",
-					Child = new MdText(_errorMessage.Value)
-					{
-						FontSize = 14,
-						Color = "#C62828"
-					}
+					FontSize = 14,
+					Color = "#C62828"
 				}
-				: new MdContainer { Height = 0 })
+			})
 		{
 			Spacing = 0
 		};

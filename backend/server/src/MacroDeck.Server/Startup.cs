@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using MacroDeck.SDK.UI.DependencyInjection;
 using MacroDeck.Server.Application;
 using MacroDeck.Server.Application.Extensions;
 using MacroDeck.Server.Application.Plugins.Services;
@@ -85,8 +86,11 @@ public class Startup
 			.SetApplicationName("MacroDeck");
 	}
 
-	public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IServiceProvider serviceProvider)
+	public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 	{
+		// Initialize MdUiServiceProvider with the application's root service provider
+		MdUiServiceProvider.Initialize(app.ApplicationServices);
+		
 		app.UseCors("AllowAny");
 		app.UseDefaultFiles();
 		app.UseStaticFiles();
@@ -108,6 +112,6 @@ public class Startup
 			spa.Options.SourcePath = "wwwroot";
 		});
 
-		Task.Run(async () => await IntegrationsModule.StartInternalIntegrations(serviceProvider));
+		Task.Run(async () => await IntegrationsModule.StartInternalIntegrations(app.ApplicationServices));
 	}
 }

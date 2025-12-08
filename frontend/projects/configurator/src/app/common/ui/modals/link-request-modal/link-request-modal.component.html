@@ -1,0 +1,26 @@
+<app-base-modal title="Open External Link">
+  <div class="py-3">
+    <div class="d-flex align-items-start gap-3 mb-3">
+      <i class="fa-solid fa-external-link-alt fa-2x text-primary"></i>
+      <div class="flex-grow-1">
+        <p class="mb-2">The application wants to open the following link in your browser:</p>
+        <div class="alert alert-info mb-3">
+          <code class="text-break">{{ url }}</code>
+        </div>
+        <p class="text-warning small mb-0">
+          <i class="fa-solid fa-exclamation-triangle me-1"></i>
+          Only approve if you trust this link
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-row-reverse gap-3">
+    <app-loading-button role="cancel" (click)="deny()">
+      <i class="fa-solid fa-times me-1"></i> Deny
+    </app-loading-button>
+    <app-loading-button role="success" (click)="approve()">
+      <i class="fa-solid fa-external-link-alt me-1"></i> Open Link
+    </app-loading-button>
+  </div>
+</app-base-modal>
