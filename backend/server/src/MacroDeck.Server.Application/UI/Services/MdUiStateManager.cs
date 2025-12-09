@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json;
 using MacroDeck.SDK.UI.Core;
 using MacroDeck.SDK.UI.Registry;
@@ -122,8 +123,9 @@ public class MdUiStateManager
 	/// </summary>
 	private MdUiState? GetStateFromView(StatefulMdUiView view)
 	{
-		var stateField = view.GetType().BaseType?.GetField("_state",
-			System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+		var stateField = view.GetType()
+			.BaseType?.GetField("_state",
+				BindingFlags.NonPublic | BindingFlags.Instance);
 		return stateField?.GetValue(view) as MdUiState;
 	}
 
@@ -210,7 +212,7 @@ public class MdUiStateManager
 		// Check for structural changes (nodes added or removed)
 		var oldNodeIds = new HashSet<string>(oldNodes.Keys);
 		var newNodeIds = new HashSet<string>(newNodes.Keys);
-		
+
 		if (!oldNodeIds.SetEquals(newNodeIds))
 		{
 			// Structural change detected - need full tree update
@@ -468,73 +470,63 @@ public class MdUiStateManager
 
 	private void InvokeEventHandler(MdUiView view, string eventName, Dictionary<string, object>? parameters)
 	{
-		Log.Debug("Invoking event handler for event {EventName} on view {ViewType}",
-			eventName,
-			view.GetType().Name);
+		Log.Debug("Invoking event handler for event {EventName} on view {ViewType}", eventName, view.GetType().Name);
 
-		// Convert event name to property/method name (e.g., "click" -> "OnClick")
 		var handlerName = "On" + char.ToUpperInvariant(eventName[0]) + eventName.Substring(1);
-
-		// First, try to find it as a property (for Action delegates)
 		var property = view.GetType().GetProperty(handlerName);
-		if (property != null && property.PropertyType == typeof(Action))
+
+		if (property == null)
 		{
-			if (property.GetValue(view) is Action action)
-			{
-				action.Invoke();
-				return;
-			}
+			Log.Warning("No handler found for event {EventName} on view {ViewType}", eventName, view.GetType().Name);
+			return;
 		}
 
-		// For input components, try to find OnChanged property with value parameter
-		if (handlerName == "OnChanged")
+		var propertyType = property.PropertyType;
+		var handler = property.GetValue(view);
+		if (handler == null)
 		{
-			var changedProperty = view.GetType().GetProperty(handlerName);
-			if (changedProperty != null)
-			{
-				var propertyType = changedProperty.PropertyType;
+			return;
+		}
 
-				// Check if it's Action<T>
-				if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Action<>))
+		// Handle Func<Task> (async click handlers)
+		if (propertyType == typeof(Func<Task>))
+		{
+			var func = (Func<Task>)handler;
+			_ = Task.Run(async () =>
+			{
+				try
 				{
-					var actionValue = changedProperty.GetValue(view);
-					if (actionValue != null && parameters != null && parameters.TryGetValue("value", out var rawValue))
-					{
-
-						// Get the target type (T in Action<T>)
-						var targetType = propertyType.GetGenericArguments()[0];
-
-						// Convert the value to the target type
-						var convertedValue = ConvertValue(rawValue, targetType);
-
-						Log.Debug("Invoking Action<{TargetType}> handler {HandlerName} with value {Value}",
-							targetType.Name,
-							handlerName,
-							convertedValue);
-
-						// Invoke the Action<T> with the converted value parameter
-						propertyType.GetMethod("Invoke")?.Invoke(actionValue, new[] { convertedValue });
-						return;
-					}
+					await func();
 				}
-			}
+				catch (Exception ex)
+				{
+					Log.Error(ex, "Error in async event handler {HandlerName}", handlerName);
+				}
+			});
+			return;
 		}
 
-		// If not found as a property, try as a method
-		var method = view.GetType().GetMethod(handlerName);
-		if (method != null)
+		// Handle Action (sync click handlers)
+		if (propertyType == typeof(Action))
 		{
-			Log.Debug("Invoking method handler {HandlerName}", handlerName);
-			// For now, invoke without parameters
-			// TODO: Map parameters to method arguments if needed
-			method.Invoke(view, null);
+			((Action)handler).Invoke();
+			return;
 		}
-		else
+
+		// Handle Action<T> (e.g., OnChanged with value parameter)
+		if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Action<>))
 		{
-			Log.Warning("No handler found for event {EventName} on view {ViewType}",
-				eventName,
-				view.GetType().Name);
+			if (parameters != null && parameters.TryGetValue("value", out var rawValue))
+			{
+				var targetType = propertyType.GetGenericArguments()[0];
+				var convertedValue = ConvertValue(rawValue, targetType);
+				propertyType.GetMethod("Invoke")?.Invoke(handler, new[] { convertedValue });
+			}
+
+			return;
 		}
+
+		Log.Warning("Unsupported handler type {HandlerType} for event {EventName}", propertyType.Name, eventName);
 	}
 }
 

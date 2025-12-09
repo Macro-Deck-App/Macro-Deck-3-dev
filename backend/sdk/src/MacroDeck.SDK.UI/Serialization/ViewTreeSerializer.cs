@@ -274,8 +274,9 @@ public class ViewTreeSerializer
 		{
 			var value = prop.GetValue(view);
 
-			// Check if this is an event handler (Action or Action<T>)
+			// Check if this is an event handler (Action, Action<T>, or Func<Task>)
 			if (prop.PropertyType == typeof(Action)
+				|| prop.PropertyType == typeof(Func<Task>)
 				|| prop.PropertyType.IsGenericType && prop.PropertyType.GetGenericTypeDefinition() == typeof(Action<>))
 			{
 				if (value != null && prop.Name.StartsWith("On"))

@@ -2,62 +2,70 @@ using MacroDeck.SDK.UI.Core;
 
 namespace MacroDeck.SDK.UI.Components;
 
-/// <summary>
-/// A clickable button
-/// </summary>
 public class MdButton : StatelessMdUiView
 {
-    public string? Text { get; set; }
-    public Action? OnClick { get; set; }
-    public MdUiView? Child { get; set; }
-    
-    /// <summary>
-    /// Bootstrap button role (Primary, Secondary, etc.)
-    /// </summary>
-    public ButtonRole Role { get; set; } = ButtonRole.Primary;
-    
-    /// <summary>
-    /// Custom background color (overrides Role if set)
-    /// </summary>
-    public string? BackgroundColor { get; set; }
-    
-    /// <summary>
-    /// Custom text color (overrides Role if set)
-    /// </summary>
-    public string? TextColor { get; set; }
-    
-    public bool Disabled { get; set; }
-    
-    public MdButton(string text, Action? onClick = null)
-    {
-        Text = text;
-        OnClick = onClick;
-    }
-    
-    public MdButton(MdUiView child, Action? onClick = null)
-    {
-        Child = child;
-        OnClick = onClick;
-    }
-    
-    public override MdUiView Build()
-    {
-        return this;
-    }
+
+	public MdButton(string text, Func<Task>? onClick = null)
+	{
+		Text = text;
+		OnClick = onClick;
+	}
+
+	public MdButton(string text, Action? onClick)
+	{
+		Text = text;
+		if (onClick != null)
+		{
+			OnClick = () =>
+			{
+				onClick();
+				return Task.CompletedTask;
+			};
+		}
+	}
+
+	public MdButton(MdUiView child, Func<Task>? onClick = null)
+	{
+		Child = child;
+		OnClick = onClick;
+	}
+
+	public MdButton(MdUiView child, Action? onClick)
+	{
+		Child = child;
+		if (onClick != null)
+		{
+			OnClick = () =>
+			{
+				onClick();
+				return Task.CompletedTask;
+			};
+		}
+	}
+
+	public string? Text { get; set; }
+	public Func<Task>? OnClick { get; set; }
+	public MdUiView? Child { get; set; }
+	public ButtonRole Role { get; set; } = ButtonRole.Primary;
+	public string? BackgroundColor { get; set; }
+	public string? TextColor { get; set; }
+	public bool Disabled { get; set; }
+
+	public override MdUiView Build()
+	{
+		return this;
+	}
 }
 
-/// <summary>
-/// Bootstrap button roles
-/// </summary>
 public enum ButtonRole
 {
-    Primary,
-    Secondary,
-    Success,
-    Danger,
-    Warning,
-    Info,
-    Light,
-    Dark,
-    Link
+	Primary,
+	Secondary,
+	Success,
+	Danger,
+	Warning,
+	Info,
+	Light,
+	Dark,
+	Link
 }
