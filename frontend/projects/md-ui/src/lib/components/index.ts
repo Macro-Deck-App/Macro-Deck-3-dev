@@ -1,5 +1,6 @@
 export * from './md-text.component';
 export * from './md-button.component';
+export * from './md-loading.component';
 export * from './md-ui-renderer.component';
 export * from './md-ui-view/md-ui-view.component';
 export * from './layout/md-column.component';

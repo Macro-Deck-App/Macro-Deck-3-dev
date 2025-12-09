@@ -179,7 +179,7 @@ public class MdUiStateManager
 						}
 						else if (updatedTree != null)
 						{
-							// Send full tree if no previous tree or no updates
+							// Send full tree if structural changes detected (propertyUpdates is null) or no previous tree
 							Log.Debug("Sending full view tree for session {SessionId}", session.SessionId);
 							await _updateService.SendViewTreeAsync(session.SessionId, updatedTree);
 						}
@@ -198,13 +198,24 @@ public class MdUiStateManager
 	}
 
 	/// <summary>
-	///     Computes the property differences between two view trees
+	///     Computes the property differences between two view trees.
+	///     Returns null if structural changes were detected (nodes added/removed).
 	/// </summary>
-	private PropertyUpdateBatch ComputePropertyDiff(string sessionId, ViewTreeNode oldTree, ViewTreeNode newTree)
+	private PropertyUpdateBatch? ComputePropertyDiff(string sessionId, ViewTreeNode oldTree, ViewTreeNode newTree)
 	{
 		var batch = new PropertyUpdateBatch { SessionId = sessionId };
 		var oldNodes = FlattenTree(oldTree).ToDictionary(n => n.NodeId);
 		var newNodes = FlattenTree(newTree).ToDictionary(n => n.NodeId);
+
+		// Check for structural changes (nodes added or removed)
+		var oldNodeIds = new HashSet<string>(oldNodes.Keys);
+		var newNodeIds = new HashSet<string>(newNodes.Keys);
+		
+		if (!oldNodeIds.SetEquals(newNodeIds))
+		{
+			// Structural change detected - need full tree update
+			return null;
+		}
 
 		// Check all new nodes for property changes
 		foreach (var (nodeId, newNode) in newNodes)

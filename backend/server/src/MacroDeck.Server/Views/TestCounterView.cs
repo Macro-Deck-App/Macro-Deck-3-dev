@@ -20,6 +20,7 @@ public class TestCounterState : MdUiState
 {
 	private State<int> _counter = null!;
 	private Computed<string> _displayText = null!;
+	private State<bool> _isLoading = null!;
 	private State<string> _message = null!;
 
 	public override void InitState()
@@ -27,6 +28,7 @@ public class TestCounterState : MdUiState
 		_counter = CreateState(0);
 		_message = CreateState("Welcome to MacroDeck UI!");
 		_displayText = CreateComputed(() => $"Counter: {_counter.Value}", _counter);
+		_isLoading = CreateState(false);
 	}
 
 	public override MdUiView Build()
@@ -101,7 +103,34 @@ public class TestCounterState : MdUiState
 					Label = "Message",
 					Placeholder = "Enter a message...",
 					OnChanged = value => _message.Value = value
+				},
+				new MdText("Loading Spinner Demo")
+				{
+					FontSize = 20,
+					FontWeight = FontWeight.Bold,
+					Margin = EdgeInsets.Only(30, bottom: 10)
+				},
+				new MdRow(new MdButton(_isLoading.Value ? "Stop Loading" : "Start Loading",
+					() =>
+					{
+						Log.Logger.Information("Button clicked, isLoading before: {IsLoading}", _isLoading.Value);
+						_isLoading.Value = !_isLoading.Value;
+						Log.Logger.Information("Button clicked, isLoading after: {IsLoading}", _isLoading.Value);
+						_message.Value = _isLoading.Value ? "Loading started..." : "Loading stopped!";
+					})
+				{
+					Role = ButtonRole.Primary,
+					Margin = EdgeInsets.Only(right: 10)
 				})
+				{
+					Margin = EdgeInsets.Only(bottom: 20)
+				},
+				new MdLoading
+				{
+					Visible = _isLoading.Value,
+					Size = LoadingSize.Large
+				})
+
 			{
 				Spacing = 10
 			}

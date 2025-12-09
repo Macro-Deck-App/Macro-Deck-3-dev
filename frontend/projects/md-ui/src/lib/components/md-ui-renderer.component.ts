@@ -22,6 +22,7 @@ import { MdContainerComponent } from './layout/md-container.component';
 import { MdTextFieldComponent } from './input/md-textfield.component';
 import { MdSwitchComponent } from './input/md-switch.component';
 import { MdCheckboxComponent } from './input/md-checkbox.component';
+import { MdLoadingComponent } from './md-loading.component';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -58,6 +59,7 @@ export class MdUiRendererComponent implements OnInit, OnChanges, OnDestroy {
     'MdTextField': MdTextFieldComponent,
     'MdSwitch': MdSwitchComponent,
     'MdCheckbox': MdCheckboxComponent,
+    'MdLoading': MdLoadingComponent,
   };
 
   constructor(
