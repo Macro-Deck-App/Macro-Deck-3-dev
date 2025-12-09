@@ -1,16 +1,12 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectorRef, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EdgeInsets } from '../../models';
+import { edgeInsetsToStyle } from '../../utils';
 
 @Component({
   selector: 'md-textfield',
   template: `
-    <div 
-      [class]="customClasses || ''"
-      [style]="customCss || ''"
-      [style.margin]="marginStyle" 
-      [style.padding]="paddingStyle">
+    <div [class]="customClasses" [style]="customCss" [style.margin]="marginStyle" [style.padding]="paddingStyle">
       @if (label) {
         <label class="form-label">{{ label }}</label>
       }
@@ -18,7 +14,7 @@ import { EdgeInsets } from '../../models';
         <input 
           #inputElement
           class="form-control"
-          [type]="currentInputType"
+          [type]="inputType"
           [value]="localValue"
           (input)="onInput($event)"
           [placeholder]="placeholder || ''"
@@ -40,35 +36,22 @@ import { EdgeInsets } from '../../models';
     </div>
   `,
   styles: [`
-    .input-group {
-      position: relative;
-    }
-    .password-toggle {
-      border-left: 0;
-      padding: 0.375rem 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 42px;
-    }
-    .input-group input {
-      border-right: 0;
-    }
-    .input-group input:focus + .btn {
-      border-color: #86b7fe;
-    }
+    .input-group { position: relative; }
+    .password-toggle { border-left: 0; padding: 0.375rem 0.75rem; display: flex; align-items: center; justify-content: center; min-width: 42px; }
+    .input-group input { border-right: 0; }
+    .input-group input:focus + .btn { border-color: #86b7fe; }
   `],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [FormsModule]
 })
 export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy {
-  @Input() value: string = '';
+  @Input() value = '';
   @Input() label?: string;
   @Input() placeholder?: string;
   @Input() type?: string;
-  @Input() disabled: boolean = false;
+  @Input() disabled = false;
   @Input() maxLength?: number;
-  @Input() sensitive: boolean = false;
+  @Input() sensitive = false;
   @Input() margin?: EdgeInsets;
   @Input() padding?: EdgeInsets;
   @Input() customCss?: string;
@@ -77,121 +60,81 @@ export class MdTextFieldComponent implements OnChanges, AfterViewInit, OnDestroy
   @Output() valueChange = new EventEmitter<string>();
   @ViewChild('inputElement', { read: ElementRef }) inputElement?: ElementRef<HTMLInputElement>;
 
-  localValue: string = '';
-  showPassword: boolean = false;
-  private isUserTyping: boolean = false;
-  private typingTimeout?: any;
+  localValue = '';
+  showPassword = false;
+  private isUserTyping = false;
+  private typingTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
-  ngAfterViewInit(): void {
-    // Initialize local value after view is ready
+  ngAfterViewInit() {
     this.localValue = this.value || '';
   }
 
-  ngOnDestroy(): void {
-    if (this.typingTimeout) {
-      clearTimeout(this.typingTimeout);
-    }
+  ngOnDestroy() {
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
   }
 
-  get currentInputType(): string {
-    if (this.sensitive && !this.showPassword) {
-      return 'password';
-    }
+  get marginStyle() { return edgeInsetsToStyle(this.margin); }
+  get paddingStyle() { return edgeInsetsToStyle(this.padding); }
+
+  get inputType(): string {
+    if (this.sensitive && !this.showPassword) return 'password';
     return this.type || 'text';
   }
 
-  togglePasswordVisibility(): void {
+  togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
-    
-    // Restore focus after toggle
-    setTimeout(() => {
-      if (this.inputElement?.nativeElement) {
-        this.inputElement.nativeElement.focus();
-      }
-    }, 0);
+    setTimeout(() => this.inputElement?.nativeElement?.focus(), 0);
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    // Update local value only if:
-    // 1. It's the first change (initialization)
-    // 2. The value from backend is different from our local value AND the user is not currently typing
-    if (changes['value']) {
-      const newValue = changes['value'].currentValue || '';
-      const isFirstChange = changes['value'].firstChange;
+  ngOnChanges(changes: SimpleChanges) {
+    if (!changes['value']) return;
+    
+    const newValue = changes['value'].currentValue || '';
+    const isFirstChange = changes['value'].firstChange;
+    
+    if (isFirstChange || !this.isUserTyping) {
+      const input = this.inputElement?.nativeElement;
+      const hadFocus = input === document.activeElement;
+      const { selectionStart, selectionEnd } = input || {};
       
-      // Only update if:
-      // - First time (initialization)
-      // - User is not typing (to avoid overwriting user input)
-      if (isFirstChange || !this.isUserTyping) {
-        const hadFocus = this.inputElement?.nativeElement === document.activeElement;
-        const selectionStart = this.inputElement?.nativeElement?.selectionStart;
-        const selectionEnd = this.inputElement?.nativeElement?.selectionEnd;
-        
-        this.localValue = newValue;
-        this.cdr.markForCheck();
-        
-        // Restore focus and cursor position if it had focus
-        if (hadFocus && this.inputElement?.nativeElement && !this.isUserTyping) {
-          setTimeout(() => {
-            if (this.inputElement?.nativeElement) {
-              this.inputElement.nativeElement.focus();
-              if (selectionStart !== null && selectionEnd !== null && 
-                  selectionStart !== undefined && selectionEnd !== undefined) {
-                this.inputElement.nativeElement.setSelectionRange(selectionStart, selectionEnd);
-              }
-            }
-          }, 0);
-        }
+      this.localValue = newValue;
+      this.cdr.markForCheck();
+      
+      if (hadFocus && input && !this.isUserTyping) {
+        setTimeout(() => {
+          input.focus();
+          if (selectionStart != null && selectionEnd != null) {
+            input.setSelectionRange(selectionStart, selectionEnd);
+          }
+        }, 0);
       }
     }
   }
 
-  onInput(event: Event): void {
+  onInput(event: Event) {
     this.isUserTyping = true;
     this.localValue = (event.target as HTMLInputElement).value;
     
-    // Clear any existing timeout
-    if (this.typingTimeout) {
-      clearTimeout(this.typingTimeout);
-    }
-    
-    // Emit immediately while typing
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
     this.valueChange.emit(this.localValue);
-    
-    // Reset isUserTyping after a short delay (e.g., 300ms after last keypress)
-    this.typingTimeout = setTimeout(() => {
-      this.isUserTyping = false;
-    }, 300);
+    this.typingTimeout = setTimeout(() => this.isUserTyping = false, 300);
   }
 
-  get marginStyle(): string | undefined {
-    if (!this.margin) return undefined;
-    return `${this.margin.top}px ${this.margin.right}px ${this.margin.bottom}px ${this.margin.left}px`;
-  }
-
-  get paddingStyle(): string | undefined {
-    if (!this.padding) return undefined;
-    return `${this.padding.top}px ${this.padding.right}px ${this.padding.bottom}px ${this.padding.left}px`;
-  }
-
-  onBlur(): void {
+  onBlur() {
     this.isUserTyping = false;
-    // Only emit if the value has actually changed
     if (this.localValue !== this.value) {
       this.valueChange.emit(this.localValue);
     }
   }
 
-  onEnter(event: Event): void {
+  onEnter(event: Event) {
     this.isUserTyping = false;
-    // Emit on Enter key
     event.preventDefault();
     if (this.localValue !== this.value) {
       this.valueChange.emit(this.localValue);
     }
-    // Blur the input to remove focus
     (event.target as HTMLInputElement).blur();
   }
 }

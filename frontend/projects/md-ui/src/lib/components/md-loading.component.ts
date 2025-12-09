@@ -1,14 +1,17 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { EdgeInsets } from '../models';
+import { edgeInsetsToStyle } from '../utils';
+
+const SIZE_PX: Record<string, number | undefined> = {
+  small: 16,
+  medium: undefined,
+  large: 48
+};
 
 @Component({
   selector: 'md-loading',
   template: `
-    <div 
-      class="d-flex justify-content-center"
-      [style.margin]="marginStyle"
-      [style.padding]="paddingStyle">
+    <div class="d-flex justify-content-center" [style.margin]="marginStyle" [style.padding]="paddingStyle">
       <div 
         class="spinner-border" 
         [class.spinner-border-sm]="size === 'small'"
@@ -20,31 +23,15 @@ import { EdgeInsets } from '../models';
       </div>
     </div>
   `,
-  standalone: true,
-  imports: [CommonModule]
+  standalone: true
 })
 export class MdLoadingComponent {
-  @Input() size?: string = 'medium';
+  @Input() size = 'medium';
   @Input() color?: string;
   @Input() margin?: EdgeInsets;
   @Input() padding?: EdgeInsets;
 
-  get sizeInPx(): number | undefined {
-    switch (this.size?.toLowerCase()) {
-      case 'small': return 16;
-      case 'medium': return undefined; // Use default
-      case 'large': return 48;
-      default: return undefined;
-    }
-  }
-
-  get marginStyle(): string | undefined {
-    if (!this.margin) return undefined;
-    return `${this.margin.top}px ${this.margin.right}px ${this.margin.bottom}px ${this.margin.left}px`;
-  }
-
-  get paddingStyle(): string | undefined {
-    if (!this.padding) return undefined;
-    return `${this.padding.top}px ${this.padding.right}px ${this.padding.bottom}px ${this.padding.left}px`;
-  }
+  get marginStyle() { return edgeInsetsToStyle(this.margin); }
+  get paddingStyle() { return edgeInsetsToStyle(this.padding); }
+  get sizeInPx() { return SIZE_PX[this.size?.toLowerCase()] ?? undefined; }
 }

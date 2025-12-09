@@ -1,13 +1,13 @@
 import { Component, Input, ViewChild, ViewContainerRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { EdgeInsets } from '../../models';
+import { edgeInsetsToStyle } from '../../utils';
 
 @Component({
   selector: 'md-container',
   template: `
     <div 
-      [class]="customClasses || ''"
-      [style]="customCss || ''"
+      [class]="customClasses"
+      [style]="customCss"
       [style.background-color]="backgroundColor"
       [style.width.px]="width"
       [style.height.px]="height"
@@ -16,13 +16,12 @@ import { EdgeInsets } from '../../models';
       [style.margin]="marginStyle"
       [style.padding]="paddingStyle"
       [style.display]="alignment ? 'flex' : undefined"
-      [style.justify-content]="getJustifyContent()"
-      [style.align-items]="getAlignItems()">
+      [style.justify-content]="justifyContent"
+      [style.align-items]="alignItems">
       <ng-container #childContainer></ng-container>
     </div>
   `,
-  standalone: true,
-  imports: [CommonModule]
+  standalone: true
 })
 export class MdContainerComponent {
   @Input() backgroundColor?: string;
@@ -39,22 +38,16 @@ export class MdContainerComponent {
   @ViewChild('childContainer', { read: ViewContainerRef, static: true })
   childContainer!: ViewContainerRef;
 
-  get marginStyle(): string | undefined {
-    if (!this.margin) return undefined;
-    return `${this.margin.top}px ${this.margin.right}px ${this.margin.bottom}px ${this.margin.left}px`;
-  }
-
-  get paddingStyle(): string | undefined {
-    if (!this.padding) return undefined;
-    return `${this.padding.top}px ${this.padding.right}px ${this.padding.bottom}px ${this.padding.left}px`;
-  }
+  get marginStyle() { return edgeInsetsToStyle(this.margin); }
+  get paddingStyle() { return edgeInsetsToStyle(this.padding); }
 
   get borderRadiusStyle(): string | undefined {
     if (!this.borderRadius) return undefined;
     if (typeof this.borderRadius === 'number') {
       return `${this.borderRadius}px`;
     }
-    return `${this.borderRadius.topLeft}px ${this.borderRadius.topRight}px ${this.borderRadius.bottomRight}px ${this.borderRadius.bottomLeft}px`;
+    const { topLeft, topRight, bottomRight, bottomLeft } = this.borderRadius;
+    return `${topLeft}px ${topRight}px ${bottomRight}px ${bottomLeft}px`;
   }
 
   get borderStyle(): string | undefined {
@@ -62,45 +55,21 @@ export class MdContainerComponent {
     return `${this.border.width}px ${this.border.style || 'solid'} ${this.border.color}`;
   }
 
-  getJustifyContent(): string | undefined {
+  get justifyContent(): string | undefined {
     if (!this.alignment) return undefined;
-    
-    switch (this.alignment.toLowerCase()) {
-      case 'topleft':
-      case 'centerleft':
-      case 'bottomleft':
-        return 'flex-start';
-      case 'topcenter':
-      case 'center':
-      case 'bottomcenter':
-        return 'center';
-      case 'topright':
-      case 'centerright':
-      case 'bottomright':
-        return 'flex-end';
-      default:
-        return undefined;
-    }
+    const align = this.alignment.toLowerCase();
+    if (align.includes('left')) return 'flex-start';
+    if (align.includes('right')) return 'flex-end';
+    if (align.includes('center')) return 'center';
+    return undefined;
   }
 
-  getAlignItems(): string | undefined {
+  get alignItems(): string | undefined {
     if (!this.alignment) return undefined;
-    
-    switch (this.alignment.toLowerCase()) {
-      case 'topleft':
-      case 'topcenter':
-      case 'topright':
-        return 'flex-start';
-      case 'centerleft':
-      case 'center':
-      case 'centerright':
-        return 'center';
-      case 'bottomleft':
-      case 'bottomcenter':
-      case 'bottomright':
-        return 'flex-end';
-      default:
-        return undefined;
-    }
+    const align = this.alignment.toLowerCase();
+    if (align.startsWith('top')) return 'flex-start';
+    if (align.startsWith('bottom')) return 'flex-end';
+    if (align.startsWith('center')) return 'center';
+    return undefined;
   }
 }

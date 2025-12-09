@@ -10,24 +10,12 @@ export interface SessionMessage {
   rootViewId: string;
 }
 
-export interface SessionPropertyUpdate {
-  sessionId: string;
-  nodeId: string;
-  properties: { [key: string]: any };
-}
-
 export interface SessionError {
   sessionId: string;
   error: string;
 }
 
-/**
- * Central SignalR connection manager for MD UI.
- * Manages a single SignalR connection and multiplexes messages to different view sessions.
- */
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class MdUiConnectionService {
   private connection: signalR.HubConnection | null = null;
   private connectionState$ = new BehaviorSubject<signalR.HubConnectionState>(signalR.HubConnectionState.Disconnected);
@@ -38,13 +26,8 @@ export class MdUiConnectionService {
 
   constructor(private linkRequestService: LinkRequestService) {}
 
-  /**
-   * Initialize the connection (called once globally)
-   */
-  async initialize(hubUrl: string = '/api/hubs/ui'): Promise<void> {
-    if (this.connection) {
-      return;
-    }
+  async initialize(hubUrl = '/api/hubs/ui'): Promise<void> {
+    if (this.connection) return;
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl)
@@ -52,21 +35,27 @@ export class MdUiConnectionService {
       .configureLogging(signalR.LogLevel.Debug)
       .build();
 
-    this.registerHandlers();
+    this.setupConnectionHandlers();
+    this.setupMessageHandlers();
 
-    // Connection state management
-    this.connection.onclose((error) => {
-      if (error) {
-        console.error('[MdUiConnection] Connection closed:', error);
-      }
+    try {
+      await this.connection.start();
+      this.connectionState$.next(signalR.HubConnectionState.Connected);
+    } catch (err) {
+      console.error('[MdUiConnection] Failed to start:', err);
       this.connectionState$.next(signalR.HubConnectionState.Disconnected);
+      throw err;
+    }
+  }
 
-      // Notify all sessions about the error
+  private setupConnectionHandlers() {
+    if (!this.connection) return;
+
+    this.connection.onclose((error) => {
+      if (error) console.error('[MdUiConnection] Closed:', error);
+      this.connectionState$.next(signalR.HubConnectionState.Disconnected);
       this.sessions.forEach(sessionId => {
-        this.errorMessages$.next({
-          sessionId,
-          error: error?.message || 'Connection closed'
-        });
+        this.errorMessages$.next({ sessionId, error: error?.message || 'Connection closed' });
       });
     });
 
@@ -74,10 +63,8 @@ export class MdUiConnectionService {
       this.connectionState$.next(signalR.HubConnectionState.Reconnecting);
     });
 
-    this.connection.onreconnected(async (connectionId) => {
+    this.connection.onreconnected(async () => {
       this.connectionState$.next(signalR.HubConnectionState.Connected);
-
-      // Reload all active sessions
       for (const sessionId of this.sessions) {
         try {
           await this.connection!.invoke('ReloadView', sessionId);
@@ -86,225 +73,98 @@ export class MdUiConnectionService {
         }
       }
     });
-
-    // Start connection
-    try {
-      await this.connection.start();
-      this.connectionState$.next(signalR.HubConnectionState.Connected);
-    } catch (err) {
-      console.error('[MdUiConnection] Failed to start connection:', err);
-      this.connectionState$.next(signalR.HubConnectionState.Disconnected);
-      throw err;
-    }
   }
 
-  /**
-   * Register SignalR message handlers
-   */
-  private registerHandlers(): void {
-    if (!this.connection) {
-      return;
-    }
+  private setupMessageHandlers() {
+    if (!this.connection) return;
 
-    // Handle view tree updates
-    this.connection.on('ReceiveViewTree', (message: ViewTreeMessage) => {
+    this.connection.on('ReceiveViewTree', (msg: ViewTreeMessage) => {
       this.viewTreeMessages$.next({
-        sessionId: message.sessionId,
-        viewTree: message.viewTree,
-        rootViewId: message.rootViewId
+        sessionId: msg.sessionId,
+        viewTree: msg.viewTree,
+        rootViewId: msg.rootViewId
       });
     });
 
-    // Handle property updates
     this.connection.on('ReceivePropertyUpdates', (batch: any) => {
       this.propertyUpdateMessages$.next(batch);
     });
 
-    // Handle errors
-    this.connection.on('ReceiveError', (message: UiErrorMessage) => {
-      console.error('[MdUiConnection] Error from server:', message.message);
-      this.errorMessages$.next({
-        sessionId: message.sessionId,
-        error: message.message
-      });
+    this.connection.on('ReceiveError', (msg: UiErrorMessage) => {
+      console.error('[MdUiConnection] Error:', msg.message);
+      this.errorMessages$.next({ sessionId: msg.sessionId, error: msg.message });
     });
 
-    // Handle plugin disconnections
     this.connection.on('PluginDisconnected', (pluginId: string) => {
       console.warn('[MdUiConnection] Plugin disconnected:', pluginId);
     });
 
-    // Handle link requests
-    this.connection.on('LinkRequest', async (message: LinkRequestMessage) => {
-      await this.handleLinkRequest(message);
-    });
+    this.connection.on('LinkRequest', (msg: LinkRequestMessage) => this.handleLinkRequest(msg));
   }
 
-  /**
-   * Handle link request message
-   */
   private async handleLinkRequest(message: LinkRequestMessage): Promise<void> {
+    const response: LinkResponseMessage = {
+      requestId: message.requestId,
+      approved: false
+    };
+
     try {
-      const approved = await this.linkRequestService.showLinkRequest(message);
+      response.approved = await this.linkRequestService.showLinkRequest(message);
+    } catch (error) {
+      console.error('[MdUiConnection] Link request error:', error);
+    }
 
-      const response: LinkResponseMessage = {
-        requestId: message.requestId,
-        approved: approved
-      };
-
+    try {
       await this.connection!.invoke('RespondToLinkRequest', response);
-    } catch (error) {
-      console.error('[MdUiConnection] Error handling link request:', error);
-
-      const response: LinkResponseMessage = {
-        requestId: message.requestId,
-        approved: false
-      };
-
-      try {
-        await this.connection!.invoke('RespondToLinkRequest', response);
-      } catch (err) {
-        console.error('[MdUiConnection] Failed to send error response:', err);
-      }
+    } catch (err) {
+      console.error('[MdUiConnection] Failed to send response:', err);
     }
   }
 
-  /**
-   * Register a new view session
-   */
-  registerSession(sessionId: string): void {
-    this.sessions.add(sessionId);
-  }
+  registerSession(sessionId: string) { this.sessions.add(sessionId); }
+  unregisterSession(sessionId: string) { this.sessions.delete(sessionId); }
 
-  /**
-   * Unregister a view session
-   */
-  unregisterSession(sessionId: string): void {
-    this.sessions.delete(sessionId);
-  }
-
-  /**
-   * Navigate to a view (creates a new session)
-   * Returns a Promise that resolves with the sessionId
-   */
   async navigateToView(viewId: string, sessionId?: string): Promise<string> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
-      throw new Error('Not connected to UI hub');
-    }
+    if (!this.isConnected()) throw new Error('Not connected');
 
-    // Use provided session ID or generate a new one
-    const actualSessionId = sessionId || this.generateSessionId();
-
-
-    // Register the session before navigating
-    this.registerSession(actualSessionId);
+    const id = sessionId || crypto.randomUUID();
+    this.registerSession(id);
 
     try {
-      // Invoke NavigateToView with the session ID and get the returned session ID from the server
-      const returnedSessionId = await this.connection.invoke<string>('NavigateToView', viewId, actualSessionId);
-
-      // Use the session ID returned from the server (should be the same as actualSessionId)
-      return returnedSessionId || actualSessionId;
+      return await this.connection!.invoke<string>('NavigateToView', viewId, id) || id;
     } catch (error) {
-      console.error('[MdUiConnection] Navigation failed:', error);
-      // Unregister session on failure
-      this.unregisterSession(actualSessionId);
+      this.unregisterSession(id);
       throw error;
     }
   }
 
-  /**
-   * Generate a unique session ID
-   */
-  private generateSessionId(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
-  }
-
-  /**
-   * Send an event for a specific session
-   */
   async sendEvent(sessionId: string, viewId: string, eventName: string, parameters?: any): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
-      throw new Error('Not connected to UI hub');
-    }
-
-    const eventMessage: UiEventMessage = {
-      sessionId,
-      viewId,
-      eventName,
-      parameters
-    };
-
-    await this.connection.invoke('SendEvent', eventMessage);
+    if (!this.isConnected()) throw new Error('Not connected');
+    await this.connection!.invoke('SendEvent', { sessionId, viewId, eventName, parameters } as UiEventMessage);
   }
 
-  /**
-   * Reload a view session
-   */
   async reloadView(sessionId: string): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
-      throw new Error('Not connected to UI hub');
-    }
-
-    await this.connection.invoke('ReloadView', sessionId);
+    if (!this.isConnected()) throw new Error('Not connected');
+    await this.connection!.invoke('ReloadView', sessionId);
   }
 
-  /**
-   * Get view tree messages for a specific session
-   */
   getViewTreeMessages$(sessionId: string): Observable<SessionMessage> {
-    return this.viewTreeMessages$.pipe(
-      filter(msg => msg.sessionId === sessionId)
-    );
+    return this.viewTreeMessages$.pipe(filter(m => m.sessionId === sessionId));
   }
 
-  /**
-   * Get property update messages for a specific session
-   */
   getPropertyUpdateMessages$(sessionId: string): Observable<any> {
-    return this.propertyUpdateMessages$.pipe(
-      filter(msg => msg.sessionId === sessionId)
-    );
+    return this.propertyUpdateMessages$.pipe(filter(m => m.sessionId === sessionId));
   }
 
-  /**
-   * Get error messages for a specific session
-   */
   getErrorMessages$(sessionId: string): Observable<SessionError> {
-    return this.errorMessages$.pipe(
-      filter(msg => msg.sessionId === sessionId)
-    );
+    return this.errorMessages$.pipe(filter(m => m.sessionId === sessionId));
   }
 
-  /**
-   * Get connection state observable
-   */
   getConnectionState$(): Observable<signalR.HubConnectionState> {
     return this.connectionState$.asObservable();
   }
 
-  /**
-   * Get current connection state
-   */
-  getConnectionState(): signalR.HubConnectionState {
-    return this.connectionState$.value;
-  }
-
-  /**
-   * Check if connected
-   */
   isConnected(): boolean {
     return this.connection?.state === signalR.HubConnectionState.Connected;
-  }
-
-  /**
-   * Get connection ID
-   */
-  getConnectionId(): string | null {
-    return this.connection?.connectionId || null;
   }
 }

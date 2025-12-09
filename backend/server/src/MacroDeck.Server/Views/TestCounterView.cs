@@ -3,31 +3,27 @@ using MacroDeck.SDK.UI.Components.Input;
 using MacroDeck.SDK.UI.Components.Layout;
 using MacroDeck.SDK.UI.Core;
 using MacroDeck.SDK.UI.Registry;
-using Serilog;
 
 namespace MacroDeck.Server.Views;
 
 [MdUiView(ViewId = "server.TestCounterView")]
 public class TestCounterView : StatefulMdUiView
 {
-	public override MdUiState CreateState()
-	{
-		return new TestCounterState();
-	}
+	public override MdUiState CreateState() => new TestCounterState();
 }
 
 public class TestCounterState : MdUiState
 {
 	private State<int> _counter = null!;
-	private Computed<string> _displayText = null!;
-	private State<bool> _isLoading = null!;
+	private Computed<string> _counterText = null!;
 	private State<string> _message = null!;
+	private State<bool> _isLoading = null!;
 
 	public override void InitState()
 	{
 		_counter = CreateState(0);
 		_message = CreateState("Welcome to MacroDeck UI!");
-		_displayText = CreateComputed(() => $"Counter: {_counter.Value}", _counter);
+		_counterText = CreateComputed(() => $"Counter: {_counter.Value}", _counter);
 		_isLoading = CreateState(false);
 	}
 
@@ -35,7 +31,8 @@ public class TestCounterState : MdUiState
 	{
 		return new MdContainer
 		{
-			Child = new MdColumn(new MdText("MacroDeck UI Framework - Test View")
+			Child = new MdColumn(
+				new MdText("MacroDeck UI Framework - Test View")
 				{
 					FontSize = 28,
 					FontWeight = FontWeight.Bold,
@@ -43,97 +40,57 @@ public class TestCounterState : MdUiState
 				},
 				new MdContainer
 				{
-					Padding = EdgeInsets.Symmetric(horizontal: 3, vertical: 0),
+					Padding = EdgeInsets.Symmetric(3, 0),
 					BorderRadius = BorderRadius.Circular(8),
-					Child = new MdText(_displayText.Value)
-					{
-						FontSize = 18,
-						FontWeight = FontWeight.Bold
-					}
+					Child = new MdText(_counterText.Value) { FontSize = 18, FontWeight = FontWeight.Bold }
 				},
 				new MdContainer
 				{
-					Padding = EdgeInsets.Symmetric(horizontal: 3, vertical: 0),
+					Padding = EdgeInsets.Symmetric(3, 0),
 					BorderRadius = BorderRadius.Circular(8),
 					Margin = EdgeInsets.Only(bottom: 20),
-					Child = new MdText(_message.Value)
-					{
-						FontSize = 16,
-						Margin = EdgeInsets.Only(bottom: 20)
-					}
+					Child = new MdText(_message.Value) { FontSize = 16 }
 				},
-				new MdRow(new MdButton("Increment",
-						() =>
-						{
-							_counter.Value++;
-							_message.Value = $"Counter incremented to {_counter.Value}!";
-							Log.Logger.Information("Increment button clicked, value {Value}", _counter.Value);
-						})
+				new MdRow(
+					new MdButton("Increment", () =>
 					{
-						Role = ButtonRole.Success,
-						Margin = EdgeInsets.Only(right: 10)
-					},
-					new MdButton("Decrement",
-						() =>
-						{
-							_counter.Value--;
-							_message.Value = $"Counter decremented to {_counter.Value}!";
-							Log.Logger.Information("Decrement button clicked, value {Value}", _counter.Value);
-						})
+						_counter.Value++;
+						_message.Value = $"Counter incremented to {_counter.Value}!";
+					}) { Role = ButtonRole.Success, Margin = EdgeInsets.Only(right: 10) },
+					new MdButton("Decrement", () =>
 					{
-						Role = ButtonRole.Danger,
-						Margin = EdgeInsets.Only(right: 10)
-					},
-					new MdButton("Reset",
-						() =>
-						{
-							_counter.Value = 0;
-							_message.Value = "Counter reset!";
-						})
+						_counter.Value--;
+						_message.Value = $"Counter decremented to {_counter.Value}!";
+					}) { Role = ButtonRole.Danger, Margin = EdgeInsets.Only(right: 10) },
+					new MdButton("Reset", () =>
 					{
-						Role = ButtonRole.Warning
-					})
-				{
-					Margin = EdgeInsets.Only(bottom: 20)
-				},
+						_counter.Value = 0;
+						_message.Value = "Counter reset!";
+					}) { Role = ButtonRole.Warning }
+				) { Margin = EdgeInsets.Only(bottom: 20) },
 				new MdTextField
 				{
-					Padding = EdgeInsets.Only(20),
 					Value = _message.Value,
 					Label = "Message",
 					Placeholder = "Enter a message...",
-					OnChanged = value => _message.Value = value
+					OnChanged = v => _message.Value = v,
+					Padding = EdgeInsets.Only(20)
 				},
 				new MdText("Loading Spinner Demo")
 				{
 					FontSize = 20,
 					FontWeight = FontWeight.Bold,
-					Margin = EdgeInsets.Only(30, bottom: 10)
+					Margin = EdgeInsets.Only(top: 30, bottom: 10)
 				},
-				new MdRow(new MdButton(_isLoading.Value ? "Stop Loading" : "Start Loading",
-					() =>
+				new MdRow(
+					new MdButton(_isLoading.Value ? "Stop" : "Start Loading", () =>
 					{
-						Log.Logger.Information("Button clicked, isLoading before: {IsLoading}", _isLoading.Value);
 						_isLoading.Value = !_isLoading.Value;
-						Log.Logger.Information("Button clicked, isLoading after: {IsLoading}", _isLoading.Value);
-						_message.Value = _isLoading.Value ? "Loading started..." : "Loading stopped!";
-					})
-				{
-					Role = ButtonRole.Primary,
-					Margin = EdgeInsets.Only(right: 10)
-				})
-				{
-					Margin = EdgeInsets.Only(bottom: 20)
-				},
-				new MdLoading
-				{
-					Visible = _isLoading.Value,
-					Size = LoadingSize.Large
-				})
-
-			{
-				Spacing = 10
-			}
+						_message.Value = _isLoading.Value ? "Loading..." : "Stopped";
+					}) { Role = ButtonRole.Primary }
+				) { Margin = EdgeInsets.Only(bottom: 20) },
+				new MdLoading { Visible = _isLoading.Value, Size = LoadingSize.Large }
+			) { Spacing = 10 }
 		};
 	}
 }
